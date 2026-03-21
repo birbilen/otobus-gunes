@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Otobüs Güneş">
+<title>Otobüste Güneş</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --sun: #F5A623;
+  --sun-dark: #B8741A;
+  --sun-light: #FEF3E2;
+  --shade: #3D84C8;
+  --shade-light: #EBF3FC;
+  --bg: #F7F5F0;
+  --card: #FFFFFF;
+  --border: rgba(0,0,0,0.08);
+  --text: #1A1917;
+  --text2: #6B6860;
+  --text3: #A8A69E;
+  --green: #2E8B57;
+  --green-light: #E8F5EE;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* ── LAYOUT ── */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: calc(var(--safe-top) + 14px) 18px 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.header-icon { font-size: 26px; line-height: 1; }
+.header-title { font-size: 19px; font-weight: 700; letter-spacing: -0.4px; }
+.header-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px calc(var(--safe-bottom) + 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 15px;
+  border: 1px solid var(--border);
+}
+.card-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ── HAT SEÇİCİ ── */
+.hat-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 13px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s;
+  -webkit-appearance: none;
+}
+.hat-btn:active { background: #EDEAE3; }
+.hat-kod {
+  background: var(--sun-light);
+  color: var(--sun-dark);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-family: 'DM Mono', monospace;
+}
+.hat-ad { flex: 1; font-size: 14px; font-weight: 500; color: var(--text); }
+.hat-chevron { color: var(--text3); font-size: 18px; line-height: 1; }
+.hat-placeholder { flex: 1; font-size: 14px; color: var(--text3); }
+
+/* ── YÖN BUTONLARI ── */
+.yon-row { display: flex; gap: 7px; }
+.yon-btn {
+  flex: 1;
+  padding: 9px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.4;
+  transition: all 0.15s;
+}
+.yon-btn.aktif {
+  background: var(--sun-light);
+  border-color: var(--sun);
+  color: var(--sun-dark);
+  font-weight: 600;
+}
+.yon-meta {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 7px;
+}
+
+/* ── DURAK SEÇİCİ ── */
+.durak-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: start; }
+.durak-col { display: flex; flex-direction: column; gap: 5px; }
+.durak-col-label { font-size: 11px; color: var(--text2); font-weight: 600; }
+.durak-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 10px;
+  min-height: 44px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.durak-btn:active { background: #EDEAE3; }
+.durak-btn.secili {
+  background: var(--green-light);
+  border-color: var(--green);
+}
+.durak-btn-text { font-size: 12px; color: var(--text3); flex: 1; }
+.durak-btn.secili .durak-btn-text { color: var(--green); font-weight: 600; }
+.durak-btn-x { font-size: 14px; color: var(--text3); padding: 2px 0 2px 4px; }
+.durak-arrow { color: var(--text3); font-size: 18px; padding-top: 28px; text-align: center; }
+
+/* ── KONUM ── */
+.gps-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s;
+}
+.gps-btn:active { background: #EDEAE3; }
+.gps-btn-text { font-size: 14px; font-weight: 500; color: var(--text); }
+.gps-aktif {
+  background: var(--green-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--green);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gps-aktif-text { font-size: 13px; color: var(--green); font-weight: 500; flex: 1; }
+.gps-sil { font-size: 12px; color: #E53935; font-weight: 600; white-space: nowrap; cursor: pointer; padding: 3px 0; }
+.konum-not { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+/* ── ZAMAN ── */
+.zaman-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.zaman-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background 0.15s;
+}
+.zaman-btn:active { background: #EDEAE3; }
+.zaman-label { font-size: 11px; color: var(--text3); }
+.zaman-value { font-size: 16px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; letter-spacing: -0.3px; }
+
+/* ── HESAPLA ── */
+.hesapla-btn {
+  background: var(--sun);
+  border: none;
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  color: #fff;
+  cursor: pointer;
+  width: 100%;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 16px rgba(245,166,35,0.35);
+  transition: transform 0.1s, opacity 0.1s;
+  -webkit-appearance: none;
+}
+.hesapla-btn:active { transform: scale(0.97); opacity: 0.9; }
+.hesapla-btn:disabled { opacity: 0.6; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.acik { opacity: 1; pointer-events: auto; }
+.modal-sheet {
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--safe-bottom);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+}
+.modal-overlay.acik .modal-sheet { transform: translateY(0); }
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 10px auto 0;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 17px; font-weight: 700; }
+.modal-kapat { font-size: 14px; color: var(--sun); font-weight: 600; padding: 4px 0; cursor: pointer; }
+.modal-arama {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 12px 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.modal-arama input {
+  flex: 1; border: none; background: transparent;
+  font-size: 15px; font-family: 'DM Sans', sans-serif;
+  color: var(--text); outline: none;
+}
+.modal-arama input::placeholder { color: var(--text3); }
+.modal-arama-x { font-size: 14px; color: var(--text3); padding: 2px 4px; cursor: pointer; }
+.modal-liste { overflow-y: auto; padding: 8px 12px 12px; flex: 1; -webkit-overflow-scrolling: touch; }
+.modal-grup-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.7px;
+  color: var(--text3); text-transform: uppercase;
+  padding: 8px 4px 6px;
+}
+.modal-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.modal-item:active { background: var(--bg); }
+.modal-item.aktif { background: var(--sun-light); border-color: var(--sun); }
+.modal-item-badge {
+  background: #F0EEE6; border-radius: 6px;
+  padding: 3px 8px; min-width: 40px; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--text2);
+  font-family: 'DM Mono', monospace;
+}
+.modal-item.aktif .modal-item-badge { background: var(--sun); color: #fff; }
+.modal-item-text { flex: 1; font-size: 14px; color: var(--text); }
+.modal-item.aktif .modal-item-text { color: var(--sun-dark); font-weight: 600; }
+.modal-item-sira {
+  width: 24px; height: 24px; border-radius: 12px;
+  background: #F0EEE6; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--text2); flex-shrink: 0;
+}
+.modal-item.aktif .modal-item-sira { background: var(--green); color: #fff; }
+.modal-empty { text-align: center; color: var(--text3); font-size: 14px; padding: 28px 0; }
+
+/* ── SONUÇ KARTI ── */
+.sonuc-kart {
+  border-radius: var(--radius);
+  padding: 18px;
+  border: 1.5px solid var(--sun);
+  background: var(--sun-light);
+  animation: slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);
+}
+.sonuc-kart.golge { background: var(--shade-light); border-color: var(--shade); }
+.sonuc-kart.gece { background: #F5F4F0; border-color: var(--border); }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sonuc-badge-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.sonuc-hat-badge {
+  background: var(--sun); color: #fff;
+  font-size: 12px; font-weight: 700;
+  padding: 3px 9px; border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+}
+.sonuc-rota { font-size: 12px; color: var(--text2); font-weight: 500; }
+.sonuc-baslik {
+  font-size: 24px; font-weight: 800;
+  color: var(--sun-dark); margin-bottom: 5px;
+  letter-spacing: -0.5px; line-height: 1.2;
+}
+.sonuc-kart.golge .sonuc-baslik { color: #1A5FA0; }
+.sonuc-kart.gece .sonuc-baslik { color: var(--text2); }
+.sonuc-alt {
+  font-size: 14px; line-height: 1.6;
+  color: var(--sun-dark); margin-bottom: 16px; opacity: 0.85;
+}
+.sonuc-kart.golge .sonuc-alt { color: #1A5FA0; }
+.sonuc-kart.gece .sonuc-alt { color: var(--text2); }
+
+/* SVG Diyagram */
+.diyagram-wrap { display: flex; justify-content: center; margin-bottom: 12px; }
+.diyagram-wrap svg { max-width: 100%; height: auto; }
+
+/* Detay grid */
+.detay-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-bottom: 10px; }
+.detay-item {
+  background: rgba(0,0,0,0.06);
+  border-radius: 9px; padding: 9px 8px; text-align: center;
+}
+.detay-deger { font-size: 14px; font-weight: 700; color: var(--text); }
+.detay-etiket { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Not */
+.sonuc-not {
+  background: rgba(0,0,0,0.05);
+  border-radius: 8px; padding: 9px 11px;
+  font-size: 12px; color: var(--text2); line-height: 1.6;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <span class="header-icon">☀️</span>
+    <div style="flex:1">
+      <div class="header-title">Otobüste Güneş</div>
+      <div class="header-sub">Doğru koltuğu seç</div>
+    </div>
+    <div id="api-canli-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)" title="Canlı veri aktif"></div>
+  </div>
+
+  <div class="scroll">
+
+    <!-- Hat -->
+    <div class="card" id="hat-kart">
+      <div class="card-label">Otobüs Hattı</div>
+      <button class="hat-btn" onclick="modalAc('hat')">
+        <span id="hat-kod-el" class="hat-placeholder" style="display:none"></span>
+        <span id="hat-ad-el" class="hat-ad" style="display:none"></span>
+        <span id="hat-placeholder" class="hat-placeholder">Hat seçin...</span>
+        <span class="hat-chevron">›</span>
+      </button>
+    </div>
+
+    <!-- Yön -->
+    <div class="card" id="yon-kart" style="display:none">
+      <div class="card-label">Seyahat Yönü</div>
+      <div class="yon-row" id="yon-row"></div>
+      <div class="yon-meta" id="yon-meta"></div>
+      <span id="api-durum-badge" style="display:none"></span>
+    </div>
+
+    <!-- Duraklar -->
+    <div class="card" id="durak-kart" style="display:none">
+      <div class="card-label">Duraklar</div>
+      <div class="durak-row">
+        <div class="durak-col">
+          <div class="durak-col-label">Biniş</div>
+          <button class="durak-btn" id="binis-btn" onclick="modalAc('binis')">
+            <span class="durak-btn-text">Durak seç...</span>
+          </button>
+        </div>
+        <div class="durak-arrow">→</div>
+        <div class="durak-col">
+          <div class="durak-col-label">İniş</div>
+          <button class="durak-btn" id="inis-btn" onclick="modalAc('inis')">
+            <span class="durak-btn-text">Durak seç...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Konum -->
+    <div class="card">
+      <div class="card-label">Konum</div>
+      <div id="konum-icerik">
+        <button class="gps-btn" onclick="konumAl()">
+          <span style="font-size:18px">📍</span>
+          <span class="gps-btn-text" id="gps-text">GPS ile Konum Al</span>
+        </button>
+        <div class="konum-not">GPS alınmazsa biniş durağı konumu kullanılır.</div>
+      </div>
+    </div>
+
+    <!-- Zaman -->
+    <div class="card">
+      <div class="card-label">Zaman</div>
+      <div class="zaman-row">
+        <button class="zaman-btn" onclick="zamanSec('date')">
+          <span class="zaman-label">📅 Tarih</span>
+          <span class="zaman-value" id="tarih-el">—</span>
+        </button>
+        <button class="zaman-btn" onclick="zamanSec('time')">
+          <span class="zaman-label">🕐 Saat</span>
+          <span class="zaman-value" id="saat-el">—</span>
+        </button>
+      </div>
+      <!-- Hidden inputs for date/time pickers -->
+      <input type="date" id="tarih-input" style="opacity:0;position:absolute;pointer-events:none;height:0" onchange="tarihDegis(this.value)">
+      <input type="time" id="saat-input" style="opacity:0;position:absolute;pointer-events:none;height:0" onchange="saatDegis(this.value)">
+    </div>
+
+    <!-- Hesapla -->
+    <button class="hesapla-btn" onclick="hesapla()" id="hesapla-btn">
+      Güneş Tarafını Hesapla
+    </button>
+
+    <!-- Sonuç -->
+    <div id="sonuc-wrap"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="modalKapat(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Seç</span>
+      <span class="modal-kapat" onclick="modalKapat()">Kapat</span>
+    </div>
+    <div class="modal-arama" id="modal-arama-wrap">
+      <span style="font-size:15px">🔍</span>
+      <input type="text" id="modal-arama" placeholder="Ara..." oninput="modalFiltrele()" autocomplete="off" autocorrect="off" spellcheck="false">
+      <span class="modal-arama-x" id="modal-arama-x" onclick="aramaTemizle()" style="display:none">✕</span>
+    </div>
+    <div class="modal-liste" id="modal-liste"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CANLI VERİ — Cloudflare Workers Proxy üzerinden
+//
+// Proxy worker.js dosyasını Cloudflare'e deploy edin,
+// sonra PROXY_URL'yi kendi adresinizle değiştirin.
+//
+// Proxy endpoint'leri:
+//   GET /durak?hat=TM15  → {gidis:[{ad,lat,lng}], donus:[...]}
+//
+// Proxy yoksa veya hata olursa statik veriye düşer.
+// ═══════════════════════════════════════════════════════
+const PROXY_URL = 'https://broken-dawn-75a3.billakgl.workers.dev';
+const API_TIMEOUT_MS = 7000;
+
+// Önbellek — aynı hat için tekrar istek atmaz
+const apiCache = {};
+
+async function apiFetch(url) {
+  const timeout = new Promise((_, rej) =>
+    setTimeout(() => rej(new Error('timeout')), API_TIMEOUT_MS)
+  );
+  const req = fetch(url).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  });
+  return Promise.race([req, timeout]);
+}
+
+async function proxyDurakCek(hatKod) {
+  // Proxy URL ayarlanmamışsa atla
+  if (PROXY_URL.includes('PROXY_URL_BURAYA')) {
+    throw new Error('Proxy URL ayarlanmamış');
+  }
+  return apiFetch(`${PROXY_URL}/durak?hat=${encodeURIComponent(hatKod)}`);
+}
+
+// ═══════════════════════════════════════════════════════
+// VERİTABANI (Statik yedek)
+// Kaynak: İBB Açık Veri GeoJSON + nevakit.com + iett.istanbul (Mart 2026)
+// API çalışmazsa bu kullanılır.
+// ═══════════════════════════════════════════════════════
+const HATLAR = [
+  { kod:'25E', ad:'Esenler ↔ Şişli', yaka:'avrupa', yonler:[
+    { label:'Esenler → Zincirlikuyu', duraklar:[
+      {ad:'Esenler Gar',lat:41.034,lng:28.886},{ad:'Bağcılar Meydan',lat:41.036,lng:28.856},
+      {ad:'Davutpaşa',lat:41.033,lng:28.919},{ad:'Topkapı',lat:41.027,lng:28.933},
+      {ad:'Bayrampaşa',lat:41.040,lng:28.924},{ad:'Şişli',lat:41.062,lng:28.987},
+      {ad:'Mecidiyeköy',lat:41.067,lng:28.994},{ad:'Zincirlikuyu',lat:41.070,lng:29.015}]},
+    { label:'Zincirlikuyu → Esenler', duraklar:[
+      {ad:'Zincirlikuyu',lat:41.070,lng:29.015},{ad:'Mecidiyeköy',lat:41.067,lng:28.994},
+      {ad:'Şişli',lat:41.062,lng:28.987},{ad:'Bayrampaşa',lat:41.040,lng:28.924},
+      {ad:'Topkapı',lat:41.027,lng:28.933},{ad:'Davutpaşa',lat:41.033,lng:28.919},
+      {ad:'Bağcılar Meydan',lat:41.036,lng:28.856},{ad:'Esenler Gar',lat:41.034,lng:28.886}]}
+  ]},
+  { kod:'34', ad:'Bakırköy ↔ Sultangazi', yaka:'avrupa', yonler:[
+    { label:'Bakırköy → Sultangazi', duraklar:[
+      {ad:'Bakırköy',lat:40.981,lng:28.872},{ad:'Yenibosna',lat:40.996,lng:28.840},
+      {ad:'Güngören',lat:41.009,lng:28.879},{ad:'Bağcılar',lat:41.036,lng:28.856},
+      {ad:'Gaziosmanpaşa',lat:41.069,lng:28.917},{ad:'Sultangazi',lat:41.107,lng:28.887}]},
+    { label:'Sultangazi → Bakırköy', duraklar:[
+      {ad:'Sultangazi',lat:41.107,lng:28.887},{ad:'Gaziosmanpaşa',lat:41.069,lng:28.917},
+      {ad:'Bağcılar',lat:41.036,lng:28.856},{ad:'Güngören',lat:41.009,lng:28.879},
+      {ad:'Yenibosna',lat:40.996,lng:28.840},{ad:'Bakırköy',lat:40.981,lng:28.872}]}
+  ]},
+  { kod:'36Z', ad:'Cebeci Peronlar ↔ Zincirlikuyu Metrobüs', yaka:'avrupa', yonler:[
+    { label:'Cebeci Peronlar → Zincirlikuyu', duraklar:[
+      {ad:'Cebeci Peronlar',lat:41.109652,lng:28.876839},{ad:'Hükümet Konağı',lat:41.107864,lng:28.878642},
+      {ad:'Halk Ekmek Fabrikası',lat:41.106624,lng:28.879694},{ad:'Tuz Deposu',lat:41.102834,lng:28.885693},
+      {ad:'Yunus Emre Mahallesi',lat:41.099905,lng:28.889487},{ad:'Adem Yavuz',lat:41.095169,lng:28.892832},
+      {ad:'Sarıkent Sitesi',lat:41.092852,lng:28.895009},{ad:'Avrupa Konutları',lat:41.087355,lng:28.901753},
+      {ad:'Su Kemeri',lat:41.093986,lng:28.907345},{ad:'Seyrantepe Yolu',lat:41.095836,lng:29.005672},
+      {ad:'Sultan Selim Mahallesi',lat:41.089773,lng:29.005709},{ad:'4.Levent',lat:41.084103,lng:29.007751},
+      {ad:'Fabrikalar',lat:41.080013,lng:29.011331},{ad:'Levent Camii',lat:41.078906,lng:29.017439},
+      {ad:'Zincirlikuyu',lat:41.069669,lng:29.014557},{ad:'Zincirlikuyu Metrobüs',lat:41.065247,lng:29.012375}]},
+    { label:'Zincirlikuyu → Cebeci Peronlar', duraklar:[
+      {ad:'Zincirlikuyu Metrobüs',lat:41.065133,lng:29.012698},{ad:'Zincirlikuyu',lat:41.069669,lng:29.014557},
+      {ad:'Fabrikalar',lat:41.080839,lng:29.011593},{ad:'4.Levent',lat:41.084103,lng:29.007751},
+      {ad:'Sultan Selim Mahallesi',lat:41.090595,lng:28.996886},{ad:'Ali Sami Yen',lat:41.066427,lng:29.001750},
+      {ad:'Oto Sanayi',lat:41.091724,lng:28.984990},{ad:'Su Kemeri',lat:41.093608,lng:28.906146},
+      {ad:'Avrupa Konutları 3.Kapı',lat:41.088020,lng:28.901042},{ad:'Avrupa Konutları',lat:41.086339,lng:28.903135},
+      {ad:'Sarıkent Sitesi',lat:41.093155,lng:28.895146},{ad:'Adem Yavuz',lat:41.095310,lng:28.892498},
+      {ad:'Yunus Emre Mahallesi',lat:41.097921,lng:28.890855},{ad:'Tuz Deposu',lat:41.102882,lng:28.885962},
+      {ad:'Halk Ekmek Fabrikası',lat:41.106841,lng:28.879836},{ad:'Hükümet Konağı',lat:41.108645,lng:28.878361},
+      {ad:'Cebeci Peronlar',lat:41.109652,lng:28.876839}]}
+  ]},
+  { kod:'38E', ad:'Eminönü ↔ Bayrampaşa', yaka:'avrupa', yonler:[
+    { label:'Eminönü → Bayrampaşa', duraklar:[
+      {ad:'Eminönü',lat:41.017,lng:28.974},{ad:'Saraçhane',lat:41.019,lng:28.949},
+      {ad:'Topkapı',lat:41.027,lng:28.933},{ad:'Bayrampaşa',lat:41.040,lng:28.924}]},
+    { label:'Bayrampaşa → Eminönü', duraklar:[
+      {ad:'Bayrampaşa',lat:41.040,lng:28.924},{ad:'Topkapı',lat:41.027,lng:28.933},
+      {ad:'Saraçhane',lat:41.019,lng:28.949},{ad:'Eminönü',lat:41.017,lng:28.974}]}
+  ]},
+  { kod:'40', ad:'Taksim ↔ Sarıyer (Boğaz B)', yaka:'avrupa', yonler:[
+    { label:'Taksim → Sarıyer', duraklar:[
+      {ad:'Taksim',lat:41.037,lng:28.985},{ad:'Beşiktaş',lat:41.043,lng:29.004},
+      {ad:'Ortaköy',lat:41.048,lng:29.028},{ad:'Arnavutköy',lat:41.057,lng:29.041},
+      {ad:'Bebek',lat:41.078,lng:29.044},{ad:'Rumeli Hisarı',lat:41.088,lng:29.055},
+      {ad:'Emirgan',lat:41.115,lng:29.058},{ad:'İstinye',lat:41.123,lng:29.054},
+      {ad:'Yeniköy',lat:41.132,lng:29.055},{ad:'Tarabya',lat:41.144,lng:29.063},
+      {ad:'Sarıyer',lat:41.167,lng:29.058}]},
+    { label:'Sarıyer → Taksim', duraklar:[
+      {ad:'Sarıyer',lat:41.167,lng:29.058},{ad:'Tarabya',lat:41.144,lng:29.063},
+      {ad:'Yeniköy',lat:41.132,lng:29.055},{ad:'İstinye',lat:41.123,lng:29.054},
+      {ad:'Emirgan',lat:41.115,lng:29.058},{ad:'Rumeli Hisarı',lat:41.088,lng:29.055},
+      {ad:'Bebek',lat:41.078,lng:29.044},{ad:'Arnavutköy',lat:41.057,lng:29.041},
+      {ad:'Ortaköy',lat:41.048,lng:29.028},{ad:'Beşiktaş',lat:41.043,lng:29.004},
+      {ad:'Taksim',lat:41.037,lng:28.985}]}
+  ]},
+  { kod:'45', ad:'Beşiktaş ↔ Sarıyer', yaka:'avrupa', yonler:[
+    { label:'Beşiktaş → Sarıyer', duraklar:[
+      {ad:'Beşiktaş',lat:41.043,lng:29.004},{ad:'Ortaköy',lat:41.048,lng:29.028},
+      {ad:'Arnavutköy',lat:41.057,lng:29.041},{ad:'Bebek',lat:41.078,lng:29.044},
+      {ad:'Emirgan',lat:41.115,lng:29.058},{ad:'İstinye',lat:41.123,lng:29.054},
+      {ad:'Yeniköy',lat:41.132,lng:29.055},{ad:'Tarabya',lat:41.144,lng:29.063},
+      {ad:'Sarıyer',lat:41.167,lng:29.058}]},
+    { label:'Sarıyer → Beşiktaş', duraklar:[
+      {ad:'Sarıyer',lat:41.167,lng:29.058},{ad:'Tarabya',lat:41.144,lng:29.063},
+      {ad:'Yeniköy',lat:41.132,lng:29.055},{ad:'İstinye',lat:41.123,lng:29.054},
+      {ad:'Emirgan',lat:41.115,lng:29.058},{ad:'Bebek',lat:41.078,lng:29.044},
+      {ad:'Arnavutköy',lat:41.057,lng:29.041},{ad:'Ortaköy',lat:41.048,lng:29.028},
+      {ad:'Beşiktaş',lat:41.043,lng:29.004}]}
+  ]},
+  { kod:'48', ad:'Eminönü ↔ Balmumcu', yaka:'avrupa', yonler:[
+    { label:'Eminönü → Balmumcu', duraklar:[
+      {ad:'Eminönü',lat:41.017,lng:28.974},{ad:'Karaköy',lat:41.022,lng:28.977},
+      {ad:'Dolmabahçe',lat:41.039,lng:28.998},{ad:'Beşiktaş',lat:41.043,lng:29.004},
+      {ad:'Akaretler',lat:41.047,lng:29.007},{ad:'Balmumcu',lat:41.069,lng:29.009}]},
+    { label:'Balmumcu → Eminönü', duraklar:[
+      {ad:'Balmumcu',lat:41.069,lng:29.009},{ad:'Akaretler',lat:41.047,lng:29.007},
+      {ad:'Beşiktaş',lat:41.043,lng:29.004},{ad:'Dolmabahçe',lat:41.039,lng:28.998},
+      {ad:'Karaköy',lat:41.022,lng:28.977},{ad:'Eminönü',lat:41.017,lng:28.974}]}
+  ]},
+  { kod:'500T', ad:'Bağcılar ↔ Eminönü', yaka:'avrupa', yonler:[
+    { label:'Bağcılar → Eminönü', duraklar:[
+      {ad:'Bağcılar Meydan',lat:41.036,lng:28.856},{ad:'Davutpaşa',lat:41.033,lng:28.919},
+      {ad:'Topkapı',lat:41.027,lng:28.933},{ad:'Aksaray',lat:41.014,lng:28.953},
+      {ad:'Eminönü',lat:41.017,lng:28.974}]},
+    { label:'Eminönü → Bağcılar', duraklar:[
+      {ad:'Eminönü',lat:41.017,lng:28.974},{ad:'Aksaray',lat:41.014,lng:28.953},
+      {ad:'Topkapı',lat:41.027,lng:28.933},{ad:'Davutpaşa',lat:41.033,lng:28.919},
+      {ad:'Bağcılar Meydan',lat:41.036,lng:28.856}]}
+  ]},
+  { kod:'TM15', ad:'Cebeci Peronlar ↔ Alibeyköy Metro', yaka:'avrupa', yonler:[
+    { label:'Cebeci Peronlar → Alibeyköy Metro', duraklar:[
+      {ad:'CEBECİ PERONLAR',lat:41.109652,lng:28.876838},
+      {ad:'CEBECİ KÖYÜ YOLU',lat:41.111417,lng:28.875340},
+      {ad:'CEBECİ MAHALLESİ',lat:41.110432,lng:28.871750},
+      {ad:'HUZUR',lat:41.109447,lng:28.868145},
+      {ad:'CEBECİ MUHTARLIĞI',lat:41.108707,lng:28.865502},
+      {ad:'1.CEBECİ CADDESİ',lat:41.107189,lng:28.862233},
+      {ad:'CEBECİ İLKOKULU',lat:41.105262,lng:28.863139},
+      {ad:'ATATÜRK BULVARI',lat:41.105576,lng:28.866351},
+      {ad:'75.YIL ORTAOKULU',lat:41.103832,lng:28.868927},
+      {ad:'SEÇKİNLER SİTESİ',lat:41.100184,lng:28.869501},
+      {ad:'ÖRNEK SİTESİ',lat:41.097779,lng:28.869679},
+      {ad:'F CADDESİ',lat:41.095685,lng:28.871507},
+      {ad:'50.YIL MAHALLESİ',lat:41.097052,lng:28.875962},
+      {ad:'HOCA AHMET YESEVİ CADDESİ',lat:41.095409,lng:28.877849},
+      {ad:'SANKO - ŞEHİT ENGİN AÇIKGÖZ',lat:41.093163,lng:28.880271},
+      {ad:'ÜÇYOL',lat:41.090968,lng:28.882652},
+      {ad:'KARADENİZ PERON',lat:41.087200,lng:28.884992},
+      {ad:'ERTUĞRUL GAZİ CADDESİ',lat:41.085733,lng:28.886848},
+      {ad:'GAZİOSMANPAŞA BELEDİYE PARKI',lat:41.084117,lng:28.889716},
+      {ad:'KAZIM KARABEKİR ANADOLU İMAM HATİP LİSESİ',lat:41.082546,lng:28.892211},
+      {ad:'KAVAKLAR',lat:41.079339,lng:28.895013},
+      {ad:'KÜÇÜKKÖY BEŞYOL',lat:41.076419,lng:28.901139},
+      {ad:'DUMLUPINAR ORTAOKULU',lat:41.074966,lng:28.902525},
+      {ad:'KÜÇÜKKÖY',lat:41.073423,lng:28.901733},
+      {ad:'GEBZELİ CADDESİ',lat:41.071447,lng:28.903081},
+      {ad:'KÜÇÜKKÖY İSTANBUL CADDESİ',lat:41.071065,lng:28.905496},
+      {ad:'MEYDAN CAMİİ',lat:41.069842,lng:28.907310},
+      {ad:'KEÇESUYU',lat:41.068907,lng:28.910787},
+      {ad:'KAVAKLI DERE',lat:41.069036,lng:28.916408},
+      {ad:'SEFA KÖPRÜSÜ',lat:41.067416,lng:28.919833},
+      {ad:'SARIGÖL',lat:41.066917,lng:28.923271},
+      {ad:'MİMAR SİNAN CAMİİ',lat:41.069183,lng:28.927032},
+      {ad:'BAŞAK SANAYİ SİTESİ',lat:41.069038,lng:28.930708},
+      {ad:'VARDAR BULVARI',lat:41.069708,lng:28.933908},
+      {ad:'ZÜMRÜT SOKAK',lat:41.071350,lng:28.936056},
+      {ad:'ŞENBAĞ',lat:41.072420,lng:28.939792},
+      {ad:'ALİBEYKÖY ANADOLU LİSESİ',lat:41.073944,lng:28.941345},
+      {ad:'ÜSKÜP PARKI',lat:41.075804,lng:28.943918},
+      {ad:'ALİBEYKÖY STADI',lat:41.075925,lng:28.947168},
+      {ad:'ALİBEYKÖY',lat:41.074412,lng:28.946309},
+      {ad:'FEVZİ ÇAKMAK CADDESİ',lat:41.071059,lng:28.947289},
+      {ad:'ARAPHAN',lat:41.072633,lng:28.949729},
+      {ad:'MAREŞAL FEVZİ ÇAKMAK CAMİİ',lat:41.074773,lng:28.950331},
+      {ad:'ALİBEYKÖY METRO',lat:41.077772,lng:28.950350},
+      {ad:'ALİBEYKÖY METRO (SON)',lat:41.079437,lng:28.950705}
+    ]},
+    { label:'Alibeyköy Metro → Cebeci Peronlar', duraklar:[
+      {ad:'ALİBEYKÖY METRO',lat:41.079437,lng:28.950705},
+      {ad:'ALİBEYKÖY METRO',lat:41.077772,lng:28.950350},
+      {ad:'ALİBEYKÖY',lat:41.076324,lng:28.945506},
+      {ad:'ÜSKÜP PARKI',lat:41.075874,lng:28.942948},
+      {ad:'ALİBEYKÖY ANADOLU LİSESİ',lat:41.073966,lng:28.941115},
+      {ad:'ŞENBAĞ',lat:41.071946,lng:28.938022},
+      {ad:'ZÜMRÜT SOKAK',lat:41.070977,lng:28.935238},
+      {ad:'VARDAR BULVARI',lat:41.069940,lng:28.933449},
+      {ad:'BAŞAK SANAYİ SİTESİ',lat:41.069370,lng:28.930205},
+      {ad:'MİMAR SİNAN CAMİİ',lat:41.070001,lng:28.927318},
+      {ad:'SARIGÖL',lat:41.067189,lng:28.923029},
+      {ad:'SEFA KÖPRÜSÜ',lat:41.067938,lng:28.920127},
+      {ad:'KAVAKLI DERE',lat:41.069409,lng:28.916379},
+      {ad:'KEÇESUYU',lat:41.069287,lng:28.909943},
+      {ad:'KÜÇÜKKÖY İSTANBUL CADDESİ',lat:41.071047,lng:28.905746},
+      {ad:'KÜÇÜKKÖY',lat:41.072650,lng:28.904201},
+      {ad:'DUMLUPINAR ORTAOKULU',lat:41.075133,lng:28.902698},
+      {ad:'KÜÇÜKKÖY BEŞYOL',lat:41.076579,lng:28.901163},
+      {ad:'KAVAKLAR',lat:41.079791,lng:28.894969},
+      {ad:'KAZIM KARABEKİR ANADOLU İMAM HATİP LİSESİ',lat:41.082637,lng:28.892444},
+      {ad:'ERTUĞRUL GAZİ',lat:41.084942,lng:28.891161},
+      {ad:'CEBECİ CADDESİ',lat:41.086500,lng:28.889643},
+      {ad:'FABRİKALAR',lat:41.088330,lng:28.887533},
+      {ad:'ÜÇYOL',lat:41.091167,lng:28.883790},
+      {ad:'SANKO - ŞEHİT ENGİN AÇIKGÖZ',lat:41.093631,lng:28.880167},
+      {ad:'HOCA AHMET YESEVİ CADDESİ',lat:41.095396,lng:28.878370},
+      {ad:'50.YIL MAHALLESİ',lat:41.097688,lng:28.875355},
+      {ad:'G CADDESİ',lat:41.096424,lng:28.871272},
+      {ad:'ÖRNEK SİTESİ',lat:41.097639,lng:28.869825},
+      {ad:'SEÇKİNLER SİTESİ',lat:41.100149,lng:28.869635},
+      {ad:'75.YIL ORTAOKULU',lat:41.103825,lng:28.869101},
+      {ad:'SULTANGAZİ BELEDİYESİ',lat:41.106309,lng:28.868953},
+      {ad:'CEBECİ MAHALLESİ',lat:41.107741,lng:28.874040},
+      {ad:'CEBECİ SPOR KOMPLEKSİ',lat:41.108310,lng:28.876141},
+      {ad:'CEBECİ PERONLAR',lat:41.109652,lng:28.876838}
+    ]}
+  ]},
+  { kod:'14C', ad:'Kadıköy ↔ Çekmeköy', yaka:'anadolu', yonler:[
+    { label:'Kadıköy → Çekmeköy', duraklar:[
+      {ad:'Kadıköy',lat:40.990,lng:29.028},{ad:'Fikirtepe',lat:40.994,lng:29.033},
+      {ad:'Kozyatağı',lat:40.975,lng:29.077},{ad:'Ümraniye',lat:41.016,lng:29.117},
+      {ad:'Çekmeköy',lat:41.032,lng:29.178}]},
+    { label:'Çekmeköy → Kadıköy', duraklar:[
+      {ad:'Çekmeköy',lat:41.032,lng:29.178},{ad:'Ümraniye',lat:41.016,lng:29.117},
+      {ad:'Kozyatağı',lat:40.975,lng:29.077},{ad:'Fikirtepe',lat:40.994,lng:29.033},
+      {ad:'Kadıköy',lat:40.990,lng:29.028}]}
+  ]},
+  { kod:'15F', ad:'Üsküdar ↔ Beykoz (Boğaz)', yaka:'anadolu', yonler:[
+    { label:'Üsküdar → Beykoz', duraklar:[
+      {ad:'Üsküdar',lat:41.023,lng:29.015},{ad:'Kuzguncuk',lat:41.035,lng:29.027},
+      {ad:'Çengelköy',lat:41.050,lng:29.053},{ad:'Kandilli',lat:41.071,lng:29.063},
+      {ad:'Anadoluhisarı',lat:41.082,lng:29.064},{ad:'Beykoz',lat:41.127,lng:29.098}]},
+    { label:'Beykoz → Üsküdar', duraklar:[
+      {ad:'Beykoz',lat:41.127,lng:29.098},{ad:'Anadoluhisarı',lat:41.082,lng:29.064},
+      {ad:'Kandilli',lat:41.071,lng:29.063},{ad:'Çengelköy',lat:41.050,lng:29.053},
+      {ad:'Kuzguncuk',lat:41.035,lng:29.027},{ad:'Üsküdar',lat:41.023,lng:29.015}]}
+  ]},
+  { kod:'21C', ad:'Kadıköy ↔ Pendik (sahil)', yaka:'anadolu', yonler:[
+    { label:'Kadıköy → Pendik', duraklar:[
+      {ad:'Kadıköy',lat:40.990,lng:29.028},{ad:'Moda',lat:40.982,lng:29.031},
+      {ad:'Göztepe',lat:40.978,lng:29.074},{ad:'Bostancı',lat:40.962,lng:29.100},
+      {ad:'Maltepe',lat:40.935,lng:29.148},{ad:'Kartal',lat:40.895,lng:29.188},
+      {ad:'Pendik',lat:40.877,lng:29.236}]},
+    { label:'Pendik → Kadıköy', duraklar:[
+      {ad:'Pendik',lat:40.877,lng:29.236},{ad:'Kartal',lat:40.895,lng:29.188},
+      {ad:'Maltepe',lat:40.935,lng:29.148},{ad:'Bostancı',lat:40.962,lng:29.100},
+      {ad:'Göztepe',lat:40.978,lng:29.074},{ad:'Moda',lat:40.982,lng:29.031},
+      {ad:'Kadıköy',lat:40.990,lng:29.028}]}
+  ]},
+  { kod:'E11', ad:'Kadıköy ↔ Dudullu', yaka:'anadolu', yonler:[
+    { label:'Kadıköy → Dudullu', duraklar:[
+      {ad:'Kadıköy',lat:40.990,lng:29.028},{ad:'Acıbadem',lat:40.994,lng:29.043},
+      {ad:'Koşuyolu',lat:40.997,lng:29.038},{ad:'Ümraniye',lat:41.016,lng:29.117},
+      {ad:'Dudullu',lat:41.035,lng:29.148}]},
+    { label:'Dudullu → Kadıköy', duraklar:[
+      {ad:'Dudullu',lat:41.035,lng:29.148},{ad:'Ümraniye',lat:41.016,lng:29.117},
+      {ad:'Koşuyolu',lat:40.997,lng:29.038},{ad:'Acıbadem',lat:40.994,lng:29.043},
+      {ad:'Kadıköy',lat:40.990,lng:29.028}]}
+  ]},
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let seciliHat = null, seciliYonIdx = 0;
+let binisStop = null, inisStop = null;
+let lokasyon = null;
+let tarih = '', saat = '';
+let aktifModal = null; // 'hat' | 'binis' | 'inis'
+// API'den gelen canlı duraklar: {gidis:[...], donus:[...]} veya null
+let canlıDuraklar = null;
+let apiYukleniyor = false;
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+(function init() {
+  const now = new Date();
+  tarih = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  saat  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('tarih-input').value = tarih;
+  document.getElementById('saat-input').value  = saat;
+  document.getElementById('tarih-el').textContent = tarihGoster(tarih);
+  document.getElementById('saat-el').textContent  = saat;
+})();
+
+// ═══════════════════════════════════════════════════════
+// YARDIMCILAR
+// ═══════════════════════════════════════════════════════
+function tarihGoster(t) {
+  const [Y,M,D] = t.split('-').map(Number);
+  const aylar = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  return `${D} ${aylar[M-1]} ${Y}`;
+}
+function tarihDegis(v) { tarih = v; document.getElementById('tarih-el').textContent = tarihGoster(v); }
+function saatDegis(v)  { saat  = v; document.getElementById('saat-el').textContent  = v; }
+function zamanSec(tip) {
+  const el = document.getElementById(tip === 'date' ? 'tarih-input' : 'saat-input');
+  el.showPicker ? el.showPicker() : el.click();
+}
+
+// ═══════════════════════════════════════════════════════
+// HAT SEÇİMİ
+// ═══════════════════════════════════════════════════════
+function onHatSec(hat) {
+  seciliHat = hat; seciliYonIdx = 0;
+  binisStop = null; inisStop = null;
+  canlıDuraklar = null;
+  modalKapat();
+
+  // Başlık güncelle
+  const kodEl = document.getElementById('hat-kod-el');
+  const adEl  = document.getElementById('hat-ad-el');
+  const ph    = document.getElementById('hat-placeholder');
+  kodEl.textContent = hat.kod; kodEl.style.display = '';
+  adEl.textContent  = hat.ad;  adEl.style.display = '';
+  ph.style.display  = 'none';
+  kodEl.className   = 'hat-kod';
+
+  // Yön kartını statik veriyle hemen göster
+  renderYon();
+  document.getElementById('yon-kart').style.display  = '';
+  document.getElementById('durak-kart').style.display = '';
+  renderDurakBtnler();
+  document.getElementById('sonuc-wrap').innerHTML = '';
+
+  // Arka planda API'den canlı durak listesini çek
+  apiDuraklariCek(hat.kod);
+}
+
+async function apiDuraklariCek(hatKod) {
+  if (apiYukleniyor) return;
+  apiYukleniyor = true;
+  setApiDurumBadge('yukleniyor');
+
+  // Önbellekte varsa direkt kullan
+  if (apiCache[hatKod]) {
+    uygulaCanlıDuraklar(hatKod, apiCache[hatKod]);
+    setApiDurumBadge('canli');
+    apiYukleniyor = false;
+    return;
+  }
+
+  try {
+    const sonuc = await proxyDurakCek(hatKod);
+
+    if (!sonuc?.gidis?.length || sonuc.gidis.length < 2) {
+      throw new Error('Yetersiz durak verisi');
+    }
+
+    apiCache[hatKod] = sonuc;
+
+    if (seciliHat && seciliHat.kod === hatKod) {
+      uygulaCanlıDuraklar(hatKod, sonuc);
+      setApiDurumBadge('canli');
+    }
+  } catch(e) {
+    const proxyAyarsiz = PROXY_URL.includes('PROXY_URL_BURAYA');
+    if (!proxyAyarsiz) {
+      console.warn('İBB API hatası, statik veri kullanılıyor:', e.message, '| URL:', PROXY_URL);
+    }
+    setApiDurumBadge('statik');
+  } finally {
+    apiYukleniyor = false;
+  }
+}
+
+function uygulaCanlıDuraklar(hatKod, sonuc) {
+  canlıDuraklar = sonuc;
+
+  // Statik yönler korunuyor ama duraklar API'den güncelleniyor
+  seciliHat = {
+    ...seciliHat,
+    yonler: seciliHat.yonler.map((y, i) => ({
+      ...y,
+      duraklar: i === 0 ? sonuc.gidis : sonuc.donus,
+      _apiKaynakli: true,
+    })),
+  };
+
+  binisStop = null;
+  inisStop  = null;
+  renderYon();
+  renderDurakBtnler();
+}
+
+function renderYon() {
+  const row  = document.getElementById('yon-row');
+  const meta = document.getElementById('yon-meta');
+  row.innerHTML = seciliHat.yonler.map((y, i) =>
+    `<button class="yon-btn${i===seciliYonIdx?' aktif':''}" onclick="onYonSec(${i})">${y.label}</button>`
+  ).join('');
+  const yon = seciliHat.yonler[seciliYonIdx];
+  meta.textContent = `${yon.duraklar.length} durak · ${yon.duraklar[0].ad} → ${yon.duraklar[yon.duraklar.length-1].ad}`;
+}
+
+function onYonSec(idx) {
+  seciliYonIdx = idx; binisStop = null; inisStop = null;
+  renderYon(); renderDurakBtnler();
+  document.getElementById('sonuc-wrap').innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════════════
+// DURAK BUTONLARI
+// ═══════════════════════════════════════════════════════
+function renderDurakBtnler() {
+  renderDurakBtn('binis', binisStop);
+  renderDurakBtn('inis',  inisStop);
+}
+function renderDurakBtn(tip, stop) {
+  const btn = document.getElementById(`${tip}-btn`);
+  if (stop) {
+    btn.className = 'durak-btn secili';
+    btn.innerHTML = `<span class="durak-btn-text">${stop.ad}</span>
+      <span class="durak-btn-x" onclick="durakTemizle('${tip}');event.stopPropagation()">✕</span>`;
+  } else {
+    btn.className = 'durak-btn';
+    btn.innerHTML = `<span class="durak-btn-text">Durak seç...</span>`;
+  }
+}
+function durakTemizle(tip) {
+  if (tip === 'binis') binisStop = null; else inisStop = null;
+  renderDurakBtn(tip, null);
+  document.getElementById('sonuc-wrap').innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════
+function modalAc(tip) {
+  aktifModal = tip;
+  const overlay = document.getElementById('modal-overlay');
+  const arama   = document.getElementById('modal-arama');
+  const aramaX  = document.getElementById('modal-arama-x');
+  arama.value = ''; aramaX.style.display = 'none';
+
+  if (tip === 'hat') {
+    document.getElementById('modal-title').textContent = 'Hat Seç';
+    document.getElementById('modal-arama-wrap').style.display = 'flex';
+    renderHatListesi('');
+  } else {
+    document.getElementById('modal-title').textContent = tip === 'binis' ? 'Biniş Durağı' : 'İniş Durağı';
+    document.getElementById('modal-arama-wrap').style.display = 'flex';
+    renderDurakListesi('');
+  }
+
+  overlay.classList.add('acik');
+  setTimeout(() => arama.focus(), 320);
+}
+
+function modalKapat(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('acik');
+  aktifModal = null;
+}
+
+function modalFiltrele() {
+  const q = document.getElementById('modal-arama').value;
+  document.getElementById('modal-arama-x').style.display = q ? '' : 'none';
+  if (aktifModal === 'hat') renderHatListesi(q);
+  else renderDurakListesi(q);
+}
+function aramaTemizle() {
+  document.getElementById('modal-arama').value = '';
+  document.getElementById('modal-arama-x').style.display = 'none';
+  if (aktifModal === 'hat') renderHatListesi('');
+  else renderDurakListesi('');
+}
+
+function setApiDurumBadge(durum) {
+  const badge = document.getElementById('api-durum-badge');
+  const dot   = document.getElementById('api-canli-dot');
+  if (!badge) return;
+  if (durum === 'yukleniyor') {
+    badge.textContent = '⟳ Canlı duraklar alınıyor...';
+    badge.style.cssText = 'font-size:10px;color:var(--text3);margin-top:6px;display:block';
+    if (dot) dot.style.display = 'none';
+  } else if (durum === 'canli') {
+    badge.textContent = '● Canlı veri (İBB)';
+    badge.style.cssText = 'font-size:10px;color:var(--green);margin-top:6px;display:block';
+    if (dot) dot.style.display = 'block';
+    setTimeout(() => { if (badge) badge.style.display = 'none'; }, 3000);
+  } else {
+    // Proxy ayarlanmamışsa sessizce geç
+    if (PROXY_URL.includes('PROXY_URL_BURAYA')) {
+      badge.style.display = 'none';
+      return;
+    }
+    badge.textContent = '○ Statik veri (proxy bağlanamadı)';
+    badge.style.cssText = 'font-size:10px;color:var(--text3);margin-top:6px;display:block';
+    if (dot) dot.style.display = 'none';
+    setTimeout(() => { if (badge) badge.style.display = 'none'; }, 2500);
+  }
+}
+
+// Hat arama - sadece statik listede arar
+let hatAramaTimeout = null;
+function renderHatListesi(q) {
+  const liste = document.getElementById('modal-liste');
+  const q2 = q.toLowerCase().trim();
+
+  const filtreli = q2 ? HATLAR.filter(h =>
+    h.kod.toLowerCase().includes(q2) || h.ad.toLowerCase().includes(q2)
+  ) : null;
+
+  let html = '';
+  if (filtreli) {
+    if (!filtreli.length) {
+      liste.innerHTML = '<div class="modal-empty">Hat bulunamadı</div>';
+      return;
+    }
+    filtreli.forEach(h => { html += hatItemHTML(h); });
+  } else {
+    ['avrupa','anadolu'].forEach(yaka => {
+      const grup = HATLAR.filter(h => h.yaka === yaka);
+      html += `<div class="modal-grup-label">${yaka === 'avrupa' ? 'Avrupa Yakası' : 'Anadolu Yakası'}</div>`;
+      grup.forEach(h => { html += hatItemHTML(h); });
+    });
+  }
+  liste.innerHTML = html;
+}
+
+function hatItemHTML(h) {
+  const aktif = seciliHat?.kod === h.kod ? ' aktif' : '';
+  const kodEsc = h.kod.replace(/'/g, "\\'");
+  return `<div class="modal-item${aktif}" onclick="onHatSec(HATLAR.find(x=>x.kod==='${kodEsc}'))">
+    <span class="modal-item-badge">${h.kod}</span>
+    <span class="modal-item-text">${h.ad}</span>
+  </div>`;
+}
+
+function renderDurakListesi(q) {
+  if (!seciliHat) return;
+  const liste = document.getElementById('modal-liste');
+  const duraklar = seciliHat.yonler[seciliYonIdx].duraklar;
+  const q2 = q.toLowerCase();
+  const filtreli = q2 ? duraklar.filter(d => d.ad.toLowerCase().includes(q2)) : duraklar;
+
+  if (!filtreli.length) { liste.innerHTML = '<div class="modal-empty">Durak bulunamadı</div>'; return; }
+
+  const secili = aktifModal === 'binis' ? binisStop : inisStop;
+  liste.innerHTML = filtreli.map(d => {
+    const idx = duraklar.indexOf(d) + 1;
+    const aktif = secili?.ad === d.ad ? ' aktif' : '';
+    const adEsc = d.ad.replace(/'/g,"\\'");
+    return `<div class="modal-item${aktif}" onclick="onDurakSec('${adEsc}')">
+      <span class="modal-item-sira">${idx}</span>
+      <span class="modal-item-text">${d.ad}</span>
+      ${aktif ? '<span style="color:var(--green);font-size:15px;font-weight:700">✓</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function onDurakSec(ad) {
+  const duraklar = seciliHat.yonler[seciliYonIdx].duraklar;
+  const stop = duraklar.find(d => d.ad === ad);
+  if (!stop) return;
+  if (aktifModal === 'binis') binisStop = stop; else inisStop = stop;
+  renderDurakBtn(aktifModal, stop);
+  modalKapat();
+  document.getElementById('sonuc-wrap').innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════════════
+// KONUM
+// ═══════════════════════════════════════════════════════
+function konumAl() {
+  const btn = document.getElementById('gps-text');
+  btn.textContent = 'Alınıyor...';
+  if (!navigator.geolocation) {
+    btn.textContent = 'GPS desteklenmiyor';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos => {
+    lokasyon = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    document.getElementById('konum-icerik').innerHTML = `
+      <div class="gps-aktif">
+        <span class="gps-aktif-text">📍 ${lokasyon.lat.toFixed(4)}°K, ${lokasyon.lng.toFixed(4)}°D</span>
+        <span class="gps-sil" onclick="konumSil()">Kaldır</span>
+      </div>`;
+  }, () => {
+    btn.textContent = 'GPS ile Konum Al';
+    alert('Konum alınamadı. Lütfen tarayıcı iznini kontrol edin.');
+  });
+}
+function konumSil() {
+  lokasyon = null;
+  document.getElementById('konum-icerik').innerHTML = `
+    <button class="gps-btn" onclick="konumAl()">
+      <span style="font-size:18px">📍</span>
+      <span class="gps-btn-text" id="gps-text">GPS ile Konum Al</span>
+    </button>
+    <div class="konum-not">GPS alınmazsa biniş durağı konumu kullanılır.</div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// GÜNEŞ HESABI (NOAA)
+// ═══════════════════════════════════════════════════════
+function toR(d) { return d * Math.PI / 180; }
+function toD(r) { return r * 180 / Math.PI; }
+
+function sunPos(date, lat, lng) {
+  const JD = date.getTime()/86400000 + 2440587.5, n = JD - 2451545;
+  const L = (280.460 + 0.9856474*n) % 360;
+  const g = toR((357.528 + 0.9856003*n) % 360);
+  const lam = toR(L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g));
+  const eps = toR(23.439 - 0.0000004*n);
+  const sinDec = Math.sin(eps)*Math.sin(lam);
+  const dec = Math.asin(sinDec);
+  const f = (279.575 + 0.9856474*n) % 360;
+  const EqT = (-104.7*Math.sin(toR(f))+596.2*Math.sin(toR(2*f))+4*Math.sin(toR(3*f))
+    -12.79*Math.sin(toR(4*f))-429.3*Math.cos(toR(f))-2*Math.cos(toR(2*f))+19.99*Math.cos(toR(3*f)))/3600;
+  const UTC = date.getUTCHours() + date.getUTCMinutes()/60;
+  const HRA = toR(15*(UTC-(12-lng/15-EqT)));
+  const latR = toR(lat);
+  const sinAlt = Math.sin(latR)*sinDec + Math.cos(latR)*Math.cos(dec)*Math.cos(HRA);
+  const alt = toD(Math.asin(Math.max(-1,Math.min(1,sinAlt))));
+  const cosAz = (sinDec-Math.sin(latR)*sinAlt)/(Math.cos(latR)*Math.cos(Math.asin(sinAlt)));
+  let az = toD(Math.acos(Math.max(-1,Math.min(1,cosAz))));
+  if (Math.sin(HRA) > 0) az = 360 - az;
+  return { altitude: Math.round(alt*10)/10, azimuth: Math.round(az*10)/10 };
+}
+
+function azDir(az) {
+  return ['Kuzey','KKD','Kuzeydoğu','DKD','Doğu','DGD','Güneydoğu','GGD',
+    'Güney','GGB','Güneybatı','BGB','Batı','BKB','Kuzeybatı','KKB'][Math.round(az/22.5)%16];
+}
+
+// ═══════════════════════════════════════════════════════
+// HESAPLA
+// ═══════════════════════════════════════════════════════
+function hesapla() {
+  if (!seciliHat)  { alert('Lütfen bir hat seçin.'); return; }
+  if (!binisStop)  { alert('Lütfen biniş durağını seçin.'); return; }
+  if (!inisStop)   { alert('Lütfen iniş durağını seçin.'); return; }
+  if (binisStop.ad === inisStop.ad) { alert('Biniş ve iniş durağı aynı olamaz.'); return; }
+
+  const btn = document.getElementById('hesapla-btn');
+  btn.disabled = true; btn.textContent = 'Hesaplanıyor...';
+
+  setTimeout(() => {
+    try {
+      const [Y,M,D] = tarih.split('-').map(Number);
+      const [H,Mn]  = saat.split(':').map(Number);
+      const date = new Date(Date.UTC(Y, M-1, D, H-3, Mn));
+      const lat = lokasyon?.lat ?? binisStop.lat;
+      const lng = lokasyon?.lng ?? binisStop.lng;
+      const sun = sunPos(date, lat, lng);
+
+      const dLng = inisStop.lng - binisStop.lng;
+      const dLat = inisStop.lat - binisStop.lat;
+      let hatAz = toD(Math.atan2(dLng, dLat));
+      if (hatAz < 0) hatAz += 360;
+      hatAz = Math.round(hatAz);
+
+      let rel = ((sun.azimuth - hatAz) % 360 + 360) % 360;
+      if (rel > 180) rel -= 360;
+      const abs = Math.abs(rel);
+
+      let yan, yanTR, golgeTR;
+      if (sun.altitude < -5) { yan='gece'; yanTR='Gece vakti'; golgeTR=''; }
+      else if (abs < 22)     { yan='on';   yanTR='Ön cam';     golgeTR=''; }
+      else if (abs > 158)    { yan='arka';  yanTR='Arka cam';  golgeTR=''; }
+      else if (rel > 0)      { yan='sag';  yanTR='Sağ taraf'; golgeTR='Sol taraf'; }
+      else                   { yan='sol';  yanTR='Sol taraf'; golgeTR='Sağ taraf'; }
+
+      const yogunluk = sun.altitude < 10 ? 'Az (alçak açı)' :
+        sun.altitude < 25 ? 'Yoğun' : sun.altitude < 50 ? 'Orta' : 'Hafif';
+
+      renderSonuc({ yan, yanTR, golgeTR, yogunluk, sun, hatAz });
+    } finally {
+      btn.disabled = false; btn.textContent = 'Güneş Tarafını Hesapla';
+    }
+  }, 80);
+}
+
+// ═══════════════════════════════════════════════════════
+// SONUÇ RENDER
+// ═══════════════════════════════════════════════════════
+function renderSonuc({ yan, yanTR, golgeTR, yogunluk, sun, hatAz }) {
+  const isGece  = yan === 'gece';
+  const isSunny = yan === 'sag' || yan === 'sol';
+  const kardCls = isGece ? 'gece' : isSunny ? '' : 'golge';
+
+  const emoji   = isGece ? '🌙' : isSunny ? '☀️' : '🔵';
+  const baslik  = isGece ? 'Gece vakti'
+    : isSunny ? `${yanTR} güneşli`
+    : `${yanTR} — güneş karşıda`;
+  const alt = isGece ? 'Bu saatte güneş ufkun altında.'
+    : isSunny ? `Serin kalmak için <strong>${golgeTR}</strong> koltuk tercih edin.`
+    : 'Güneş ön/arka camdan giriyor. Her iki yan da benzer durumda.';
+
+  const diyagramSVG = isGece ? '' : busDiagramSVG(yan, sun, hatAz);
+  const detayHTML  = isGece ? '' : `
+    <div class="detay-grid">
+      <div class="detay-item"><div class="detay-deger">${azDir(sun.azimuth)}</div><div class="detay-etiket">Güneş yönü</div></div>
+      <div class="detay-item"><div class="detay-deger">${sun.altitude}°</div><div class="detay-etiket">Yükseklik</div></div>
+      <div class="detay-item"><div class="detay-deger">${azDir(hatAz)}</div><div class="detay-etiket">Hat yönü</div></div>
+    </div>
+    <div class="sonuc-not">Yoğunluk: <strong>${yogunluk}</strong> · Güneş ${sun.altitude}° yükseklikte, ${azDir(sun.azimuth)} yönünde.</div>`;
+
+  document.getElementById('sonuc-wrap').innerHTML = `
+    <div class="sonuc-kart ${kardCls}">
+      <div class="sonuc-badge-row">
+        <span class="sonuc-hat-badge">${seciliHat.kod}</span>
+        <span class="sonuc-rota">${binisStop.ad} → ${inisStop.ad}</span>
+      </div>
+      <div class="sonuc-baslik">${emoji} ${baslik}</div>
+      <div class="sonuc-alt">${alt}</div>
+      ${diyagramSVG ? `<div class="diyagram-wrap">${diyagramSVG}</div>` : ''}
+      ${detayHTML}
+    </div>`;
+
+  document.getElementById('sonuc-wrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function busDiagramSVG(yan, sun, hatAz) {
+  const W=310, H=130;
+  const bx=105, by=26, bw=100, bh=68;
+  const cx=bx+bw/2, cy=by+bh/2;
+  const SUN='#F5A623', SHADE='#3D84C8';
+  const BUS='#E8E6DC', BUSS='#B4B2A9', WIN='#C8D8E8', TXT='#555';
+  const SW=7;
+
+  let rel = ((sun.azimuth - hatAz) % 360 + 360) % 360;
+  if (rel > 180) rel -= 360;
+  const sunRad = toR(rel);
+  const aLen = 36;
+  const sx2 = cx + Math.sin(sunRad)*aLen, sy2 = cy - Math.cos(sunRad)*aLen;
+  const sIX  = cx + Math.sin(sunRad)*(aLen+17), sIY = cy - Math.cos(sunRad)*(aLen+17);
+
+  const solStripX = bx-SW-3, sagStripX = bx+bw+3;
+  let sunStrip='', shadeStrip='', golgeLbl='';
+
+  if (yan==='sag') {
+    sunStrip   = `<rect x="${sagStripX}" y="${by+9}" width="${SW}" height="${bh-18}" rx="3" fill="${SUN}" opacity=".85"/>`;
+    shadeStrip = `<rect x="${solStripX}" y="${by+9}" width="${SW}" height="${bh-18}" rx="3" fill="${SHADE}" opacity=".65"/>`;
+    golgeLbl   = `<text x="42" y="${cy+4}" text-anchor="middle" font-size="10" fill="${SHADE}" font-weight="600">Gölge</text>`;
+  } else if (yan==='sol') {
+    sunStrip   = `<rect x="${solStripX}" y="${by+9}" width="${SW}" height="${bh-18}" rx="3" fill="${SUN}" opacity=".85"/>`;
+    shadeStrip = `<rect x="${sagStripX}" y="${by+9}" width="${SW}" height="${bh-18}" rx="3" fill="${SHADE}" opacity=".65"/>`;
+    golgeLbl   = `<text x="${W-42}" y="${cy+4}" text-anchor="middle" font-size="10" fill="${SHADE}" font-weight="600">Gölge</text>`;
+  } else if (yan==='on') {
+    sunStrip = `<rect x="${bx+9}" y="${by-SW-2}" width="${bw-18}" height="${SW}" rx="3" fill="${SUN}" opacity=".85"/>`;
+  } else if (yan==='arka') {
+    sunStrip = `<rect x="${bx+9}" y="${by+bh+2}" width="${bw-18}" height="${SW}" rx="3" fill="${SUN}" opacity=".85"/>`;
+  }
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">
+    <text x="${cx}" y="14" text-anchor="middle" font-size="10" fill="${TXT}">İleri yön ↑</text>
+    <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="8" fill="${BUS}" stroke="${BUSS}" stroke-width="1"/>
+    <rect x="${bx+7}" y="${by+11}" width="13" height="15" rx="3" fill="${WIN}"/>
+    <rect x="${bx+7}" y="${by+37}" width="13" height="15" rx="3" fill="${WIN}"/>
+    <rect x="${bx+bw-20}" y="${by+11}" width="13" height="15" rx="3" fill="${WIN}"/>
+    <rect x="${bx+bw-20}" y="${by+37}" width="13" height="15" rx="3" fill="${WIN}"/>
+    <rect x="${cx-8}" y="${by+11}" width="16" height="44" rx="3" fill="${WIN}" opacity=".6"/>
+    ${sunStrip}${shadeStrip}
+    <text x="72" y="${cy+4}" text-anchor="middle" font-size="11" fill="${TXT}">Sol</text>
+    <text x="${W-72}" y="${cy+4}" text-anchor="middle" font-size="11" fill="${TXT}">Sağ</text>
+    ${golgeLbl}
+    <line x1="${cx}" y1="${cy}" x2="${sx2}" y2="${sy2}" stroke="${SUN}" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="${sIX-6},${sIY+4} ${sIX+6},${sIY+4} ${sIX},${sIY-7}" fill="${SUN}" transform="rotate(${sun.azimuth-hatAz+180},${sIX},${sIY})"/>
+    <circle cx="${sIX}" cy="${sIY}" r="9" fill="${SUN}" opacity=".9"/>
+    <text x="${sIX}" y="${sIY+4}" text-anchor="middle" font-size="10" fill="white">☀</text>
+  </svg>`;
+}
+</script>
+</body>
+</html>
