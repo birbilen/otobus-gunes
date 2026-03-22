@@ -223,6 +223,23 @@ body {
   transition: background 0.15s;
 }
 .zaman-btn:active { background: #EDEAE3; }
+.zaman-native-input {
+  border: none;
+  background: transparent;
+  font-family: 'DM Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+  padding: 0;
+  -webkit-appearance: none;
+}
+.zaman-native-input::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+}
 .zaman-label { font-size: 11px; color: var(--text3); }
 .zaman-value { font-size: 16px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; letter-spacing: -0.3px; }
 
@@ -463,20 +480,18 @@ body {
     <div class="card">
       <div class="card-label">Zaman</div>
       <div class="zaman-row">
-        <label class="zaman-btn" style="cursor:pointer;position:relative">
+        <div class="zaman-btn" style="gap:4px">
           <span class="zaman-label">📅 Tarih</span>
-          <span class="zaman-value" id="tarih-el">—</span>
           <input type="date" id="tarih-input"
-            style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer"
+            class="zaman-native-input"
             onchange="tarihDegis(this.value)">
-        </label>
-        <label class="zaman-btn" style="cursor:pointer;position:relative">
+        </div>
+        <div class="zaman-btn" style="gap:4px">
           <span class="zaman-label">🕐 Saat</span>
-          <span class="zaman-value" id="saat-el">—</span>
           <input type="time" id="saat-input"
-            style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer"
+            class="zaman-native-input"
             onchange="saatDegis(this.value)">
-        </label>
+        </div>
       </div>
     </div>
 
@@ -584,6 +599,8 @@ async function hatlarYukle() {
         }
       ]
     }));
+    // Alfabetik sırala
+    HATLAR.sort((a, b) => a.kod.localeCompare(b.kod, 'tr', {numeric: true}));
     console.log('✓ ' + HATLAR.length + ' hat yüklendi');
     // Hat listesi hazır, UI'ı aktifleştir
     document.getElementById('hat-select-btn').disabled = false;
@@ -616,8 +633,7 @@ let apiYukleniyor = false;
   saat  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   document.getElementById('tarih-input').value = tarih;
   document.getElementById('saat-input').value  = saat;
-  document.getElementById('tarih-el').textContent = tarihGoster(tarih);
-  document.getElementById('saat-el').textContent  = saat;
+  // Tarih ve saat inputları init değerleriyle set edildi
 })();
 
 // ═══════════════════════════════════════════════════════
@@ -628,8 +644,13 @@ function tarihGoster(t) {
   const aylar = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
   return `${D} ${aylar[M-1]} ${Y}`;
 }
-function tarihDegis(v) { tarih = v; document.getElementById('tarih-el').textContent = tarihGoster(v); }
-function saatDegis(v)  { saat  = v; document.getElementById('saat-el').textContent  = v; }
+function tarihDegis(v) {
+  tarih = v;
+  // Input zaten değeri gösteriyor, ekstra span'a gerek yok
+}
+function saatDegis(v) {
+  saat = v;
+}
 
 // ═══════════════════════════════════════════════════════
 // HAT SEÇİMİ
