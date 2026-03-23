@@ -10,6 +10,7 @@
 <title>Otobüste Güneş</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
 
 <style>
@@ -263,6 +264,28 @@ body {
 .hesapla-btn:active { transform: scale(0.97); opacity: 0.9; }
 .hesapla-btn:disabled { opacity: 0.6; }
 
+/* ── TRAFİK BUTONLARI ── */
+.trafik-btn {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+}
+.trafik-btn.aktif {
+  background: var(--sun-light);
+  border-color: var(--sun);
+  color: var(--sun-dark);
+  font-weight: 700;
+}
+.trafik-btn:active { opacity: 0.7; }
+
 /* ── MODAL ── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 100;
@@ -347,6 +370,98 @@ body {
 .modal-item.aktif .modal-item-sira { background: var(--green); color: #fff; }
 .modal-empty { text-align: center; color: var(--text3); font-size: 14px; padding: 28px 0; }
 
+/* ── SEKMELER ── */
+.sekme-bar {
+  display: flex;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.sekme-btn {
+  flex: 1;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+}
+.sekme-btn.aktif {
+  color: var(--sun-dark);
+  border-bottom-color: var(--sun);
+}
+.sekme-icerik { display: none; }
+.sekme-icerik.aktif { display: flex; flex-direction: column; gap: 10px; }
+
+/* ── ŞEHİRLERARASI ── */
+.sehir-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23A8A69E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  cursor: pointer;
+}
+.sehir-select:focus { outline: none; border-color: var(--sun); }
+
+.guzergah-info {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.guzergah-sure {
+  background: var(--sun-light);
+  color: var(--sun-dark);
+  font-weight: 700;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+.mola-listesi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.mola-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text2);
+}
+.mola-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sun);
+  flex-shrink: 0;
+}
+.mola-dot.terminal { background: var(--green); }
+.mola-dot.mola { background: var(--sun); }
+.mola-dot.gecis { background: var(--text3); }
+
 /* ── SONUÇ KARTI ── */
 .sonuc-kart {
   border-radius: var(--radius);
@@ -406,6 +521,7 @@ body {
   font-size: 12px; color: var(--text2); line-height: 1.6;
 }
 </style>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="app">
@@ -416,10 +532,18 @@ body {
       <div class="header-title">Otobüste Güneş</div>
       <div class="header-sub">Doğru koltuğu seç</div>
     </div>
-    <div id="api-canli-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)" title="Canlı veri aktif"></div>
+  </div>
+
+  <!-- Sekmeler -->
+  <div class="sekme-bar">
+    <button class="sekme-btn aktif" onclick="sekmeGec('sehirici')">🚌 Şehir İçi</button>
+    <button class="sekme-btn" onclick="sekmeGec('sehirlerarasi')">🛣️ Şehirler Arası</button>
   </div>
 
   <div class="scroll">
+
+    <!-- ŞEHİR İÇİ SEKMESİ -->
+    <div class="sekme-icerik aktif" id="sekme-sehirici">
 
     <!-- Hat -->
     <div class="card" id="hat-kart">
@@ -500,9 +624,120 @@ body {
       Güneş Tarafını Hesapla
     </button>
 
-    <!-- Sonuç -->
-    <div id="sonuc-wrap"></div>
-  </div>
+      <!-- Sonuç -->
+      <div id="sonuc-wrap"></div>
+    </div><!-- /sekme-sehirici -->
+
+    <!-- ŞEHİRLERARASI SEKMESİ -->
+    <div class="sekme-icerik" id="sekme-sehirlerarasi">
+
+      <!-- Kalkış -->
+      <div class="card">
+        <div class="card-label">Kalkış</div>
+        <select class="sehir-select" id="sa-kalkis-sehir" onchange="saKalkisSehirSec(this.value)">
+          <option value="">Şehir seçin...</option>
+        </select>
+        <select class="sehir-select" id="sa-kalkis-nokta"
+          style="display:none;margin-top:8px"
+          onchange="saKalkisNoktaSec(this.value)">
+        </select>
+      </div>
+
+      <!-- Takas butonu -->
+      <div id="sa-takas-wrap" style="display:none;text-align:center;margin:-4px 0">
+        <button onclick="saTakas()" style="
+          background:var(--card);border:1.5px solid var(--border);
+          border-radius:50%;width:36px;height:36px;font-size:18px;
+          cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.08);
+          transition:transform 0.2s;display:inline-flex;
+          align-items:center;justify-content:center;
+        " title="Yönü tersine çevir">⇄</button>
+      </div>
+
+      <!-- Varış -->
+      <div class="card" id="sa-varis-kart" style="display:none">
+        <div class="card-label">Varış</div>
+        <select class="sehir-select" id="sa-varis-sehir" onchange="saVarisSehirSec(this.value)">
+          <option value="">Şehir seçin...</option>
+        </select>
+        <select class="sehir-select" id="sa-varis-nokta"
+          style="display:none;margin-top:8px"
+          onchange="saVarisNoktaSec(this.value)">
+        </select>
+      </div>
+
+      <!-- Güzergah Bilgisi -->
+      <div class="card" id="sa-guzergah-kart" style="display:none">
+        <div class="card-label">Güzergah</div>
+        <div id="sa-guzergah-bilgi"></div>
+      </div>
+
+      <!-- Zaman -->
+      <div class="card" id="sa-zaman-kart" style="display:none">
+        <div class="card-label">Kalkış Zamanı</div>
+        <div class="zaman-row">
+          <div class="zaman-btn" style="gap:4px">
+            <span class="zaman-label">📅 Tarih</span>
+            <input type="date" id="sa-tarih-input" class="zaman-native-input" onchange="saTarihDegis(this.value)">
+          </div>
+          <div class="zaman-btn" style="gap:4px">
+            <span class="zaman-label">🕐 Kalkış</span>
+            <input type="time" id="sa-saat-input" class="zaman-native-input" onchange="saSaatDegis(this.value)">
+          </div>
+        </div>
+
+        <!-- Trafik gecikmesi -->
+        <div style="margin-top:10px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.7px;color:var(--text3);margin-bottom:7px">
+            🚦 TRAFİK GECİKMESİ
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="trafik-btnler">
+            <button class="trafik-btn aktif" onclick="saTrafikSec(0)"   data-dk="0">Yok</button>
+            <button class="trafik-btn"       onclick="saTrafikSec(30)"  data-dk="30">+30 dk</button>
+            <button class="trafik-btn"       onclick="saTrafikSec(60)"  data-dk="60">+1 saat</button>
+            <button class="trafik-btn"       onclick="saTrafikSec(90)"  data-dk="90">+1.5 saat</button>
+            <button class="trafik-btn"       onclick="saTrafikSec(120)" data-dk="120">+2 saat</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Harita + Zaman Çizelgesi -->
+      <div class="card" id="sa-harita-kart" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="card-label" style="margin-bottom:0">Güzergah Haritası</div>
+          <span id="sa-harita-baslik" style="font-size:12px;color:var(--text2)"></span>
+        </div>
+        <div id="sa-harita" style="height:240px;border-radius:10px;margin-bottom:12px;position:relative;z-index:1"></div>
+
+        <!-- Güneş Zaman Çizelgesi -->
+        <div class="card-label" style="margin-bottom:6px">Güneş Zaman Çizelgesi</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+          Güzergah boyunca güneşin konumu — renk her segmentteki durumu gösterir
+        </div>
+        <div id="sa-zaman-bar" style="height:18px;border-radius:6px;overflow:hidden;display:flex;margin-bottom:6px"></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:10px">
+          <span id="sa-zaman-baslangic"></span>
+          <span id="sa-zaman-bitis"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:10px">
+          <span>0 km</span>
+          <span id="sa-zaman-km"></span>
+        </div>
+        <div id="sa-zaman-legend" style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2)"></div>
+      </div>
+
+      <!-- Hesapla -->
+      <button class="hesapla-btn" onclick="saHesapla()" id="sa-hesapla-btn"
+        style="display:none">
+        Güneş Tarafını Hesapla
+      </button>
+
+      <!-- Sonuç -->
+      <div id="sa-sonuc-wrap"></div>
+
+    </div><!-- /sekme-sehirlerarasi -->
+
+  </div><!-- /scroll -->
 </div>
 
 <!-- Modal -->
@@ -619,6 +854,12 @@ let binisStop = null, inisStop = null;
 let lokasyon = null;
 let tarih = '', saat = '';
 let aktifModal = null; // 'hat' | 'binis' | 'inis'
+// Şehirlerarası state
+let saKalkisSehir = null, saKalkisNokta = null;
+let saVarisSehir  = null, saVarisNokta  = null;
+let saSeciliGuzergahState = null;
+let saTarih = '', saSaat = '';
+let saTrafikDk = 0; // trafik gecikmesi (dakika)
 // API'den gelen canlı duraklar: {gidis:[...], donus:[...]} veya null
 let canlıDuraklar = null;
 let apiYukleniyor = false;
@@ -1014,8 +1255,8 @@ function segmentAnalizi(duraklar, binisIdx, inisIdx, date, lat, lng) {
     if (rel > 180) rel -= 360;
     const abs = Math.abs(rel);
 
-    if      (abs < 22)  onMesafe   += mesafe;
-    else if (abs > 158) arkaMesafe += mesafe;
+    if      (abs < 30)  onMesafe   += mesafe;
+    else if (abs > 150) arkaMesafe += mesafe;
     else if (rel > 0)   sagMesafe  += mesafe;
     else                solMesafe  += mesafe;
   }
@@ -1077,8 +1318,8 @@ function hesapla() {
         let rel = ((sun.azimuth - hatAz) % 360 + 360) % 360;
         if (rel > 180) rel -= 360;
         const abs = Math.abs(rel);
-        if (abs < 22)       { yan='on';   yanTR='Ön cam';    golgeTR=''; }
-        else if (abs > 158) { yan='arka'; yanTR='Arka cam';  golgeTR=''; }
+        if (abs < 30)       { yan='on';   yanTR='Ön cam';    golgeTR=''; }
+        else if (abs > 150) { yan='arka'; yanTR='Arka cam';  golgeTR=''; }
         else if (rel > 0)   { yan='sag';  yanTR='Sağ taraf'; golgeTR='Sol taraf'; }
         else                { yan='sol';  yanTR='Sol taraf'; golgeTR='Sağ taraf'; }
       }
@@ -1174,9 +1415,17 @@ function busDiagramSVG(yan, sun, hatAz) {
   const BUS='#E8E6DC', BUSS='#B4B2A9', WIN='#C8D8E8', TXT='#555';
   const SW=7;
 
-  let rel = ((sun.azimuth - hatAz) % 360 + 360) % 360;
-  if (rel > 180) rel -= 360;
-  const sunRad = toR(rel);
+  // Güneş okunu yan'a göre sabit açıda çiz (hesaplama tutarsızlığını önle)
+  // yan=sag → güneş sağdan (rel=+60°), yan=sol → soldan (rel=-60°)
+  // yan=on  → önden (rel=0°),          yan=arka → arkadan (rel=180°)
+  let displayRel;
+  if      (yan==='sag')  displayRel =  60;
+  else if (yan==='sol')  displayRel = -60;
+  else if (yan==='on')   displayRel =   0;
+  else if (yan==='arka') displayRel = 180;
+  else                   displayRel =  60;
+
+  const sunRad = toR(displayRel);
   const aLen = 36;
   const sx2 = cx + Math.sin(sunRad)*aLen, sy2 = cy - Math.cos(sunRad)*aLen;
   const sIX  = cx + Math.sin(sunRad)*(aLen+17), sIY = cy - Math.cos(sunRad)*(aLen+17);
@@ -1211,11 +1460,1048 @@ function busDiagramSVG(yan, sun, hatAz) {
     <text x="${W-72}" y="${cy+4}" text-anchor="middle" font-size="11" fill="${TXT}">Sağ</text>
     ${golgeLbl}
     <line x1="${cx}" y1="${cy}" x2="${sx2}" y2="${sy2}" stroke="${SUN}" stroke-width="2.5" stroke-linecap="round"/>
-    <polygon points="${sIX-6},${sIY+4} ${sIX+6},${sIY+4} ${sIX},${sIY-7}" fill="${SUN}" transform="rotate(${sun.azimuth-hatAz+180},${sIX},${sIY})"/>
+    <polygon points="${sIX-6},${sIY+4} ${sIX+6},${sIY+4} ${sIX},${sIY-7}" fill="${SUN}" transform="rotate(${displayRel+180},${sIX},${sIY})"/>
     <circle cx="${sIX}" cy="${sIY}" r="9" fill="${SUN}" opacity=".9"/>
     <text x="${sIX}" y="${sIY+4}" text-anchor="middle" font-size="10" fill="white">☀</text>
   </svg>`;
 }
+
+// ═══════════════════════════════════════════════════════
+// SEKME GEÇİŞİ
+// ═══════════════════════════════════════════════════════
+function saTakas() {
+  if (!saKalkisSehir || !saVarisSehir) return;
+
+  // Değerleri geçici sakla
+  const tmpKalkisSehir = saKalkisSehir;
+  const tmpKalkisNokta = saKalkisNokta;
+  const tmpVarisSehir  = saVarisSehir;
+  const tmpVarisNokta  = saVarisNokta;
+
+  // Sıfırla
+  saKalkisSehir = null; saKalkisNokta = null;
+  saVarisSehir  = null; saVarisNokta  = null;
+
+  // Kalkış dropdown'unu varış değeriyle set et
+  document.getElementById('sa-kalkis-sehir').value = tmpVarisSehir;
+  saKalkisSehirSec(tmpVarisSehir);
+
+  // Kalkış terminal seç
+  const kalkisNoktaSelect = document.getElementById('sa-kalkis-nokta');
+  if (tmpVarisNokta && kalkisNoktaSelect.style.display !== 'none') {
+    kalkisNoktaSelect.value = tmpVarisNokta.id;
+    saKalkisNoktaSec(tmpVarisNokta.id);
+  }
+
+  // Varış dropdown'unu kalkış değeriyle set et
+  document.getElementById('sa-varis-sehir').value = tmpKalkisSehir;
+  saVarisSehirSec(tmpKalkisSehir);
+
+  // Varış terminal seç
+  const varisNoktaSelect = document.getElementById('sa-varis-nokta');
+  if (tmpKalkisNokta && varisNoktaSelect.style.display !== 'none') {
+    varisNoktaSelect.value = tmpKalkisNokta.id;
+    saVarisNoktaSec(tmpKalkisNokta.id);
+  }
+
+  // Butonu döndür animasyonu
+  const btn = document.querySelector('#sa-takas-wrap button');
+  if (btn) {
+    btn.style.transform = 'rotate(180deg)';
+    setTimeout(() => btn.style.transform = '', 300);
+  }
+}
+
+function sekmeGec(id) {
+  document.querySelectorAll('.sekme-btn').forEach((b, i) => {
+    b.classList.toggle('aktif',
+      (i === 0 && id === 'sehirici') ||
+      (i === 1 && id === 'sehirlerarasi'));
+  });
+  document.getElementById('sekme-sehirici').classList.toggle('aktif', id === 'sehirici');
+  document.getElementById('sekme-sehirlerarasi').classList.toggle('aktif', id === 'sehirlerarasi');
+  // Şehirlerarası sekmesi açılınca tarih/saati güncel değerle doldur
+  if (id === 'sehirlerarasi') {
+    const now = new Date();
+    saTarih = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    saSaat  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const ti = document.getElementById('sa-tarih-input');
+    const si = document.getElementById('sa-saat-input');
+    if (ti) ti.value = saTarih;
+    if (si) si.value = saSaat;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// ŞEHİRLERARASI v2
+// 37 şehir, 77 güzergah (154 yön), stops_forward/backward
+// ═══════════════════════════════════════════════════════
+
+const SA_SEHIRLER = {"istanbul":{"ad":"İstanbul","noktalar":[{"id":"esenler","ad":"Esenler Otogarı (BİO)","lat":41.0344,"lng":28.8993,"yaka":"avrupa","tip":"ana"},{"id":"alibeyköy","ad":"Alibeyköy Otogarı","lat":41.0792,"lng":28.9471,"yaka":"avrupa","tip":"cep"},{"id":"silivri","ad":"Silivri (Trakya Çıkışı)","lat":41.0731,"lng":28.2473,"yaka":"avrupa","tip":"cep"},{"id":"dudullu","ad":"Dudullu Otogarı","lat":41.0197,"lng":29.1785,"yaka":"anadolu","tip":"ana"},{"id":"samandira","ad":"Samandıra Tesis Terminali","lat":40.9991,"lng":29.2156,"yaka":"anadolu","tip":"tesis"},{"id":"sultanbeyli","ad":"Sultanbeyli Peronlar","lat":40.963,"lng":29.268,"yaka":"anadolu","tip":"cep"},{"id":"kurtköy","ad":"Kurtköy (SAW Bölgesi)","lat":40.9143,"lng":29.3145,"yaka":"anadolu","tip":"cep"},{"id":"harem","ad":"Harem","lat":41.0089,"lng":29.0229,"yaka":"anadolu","tip":"cep"}]},"ankara":{"ad":"Ankara","noktalar":[{"id":"asti","ad":"AŞTİ","lat":39.9208,"lng":32.8541,"tip":"ana"},{"id":"otogar2","ad":"Ankara 2. Otogar","lat":39.95,"lng":32.87,"tip":"cep"}]},"izmir":{"ad":"İzmir","noktalar":[{"id":"otogar","ad":"İzmir Otogarı","lat":38.4192,"lng":27.139,"tip":"ana"},{"id":"karsiyaka","ad":"Karşıyaka Terminali","lat":38.4579,"lng":27.1088,"tip":"cep"}]},"bursa":{"ad":"Bursa","noktalar":[{"id":"otogar","ad":"Bursa Terminal","lat":40.1956,"lng":29.0601,"tip":"ana"}]},"antalya":{"ad":"Antalya","noktalar":[{"id":"otogar","ad":"Antalya Otogarı","lat":36.8969,"lng":30.7133,"tip":"ana"}]},"adana":{"ad":"Adana","noktalar":[{"id":"otogar","ad":"Adana Otogarı","lat":36.9914,"lng":35.3308,"tip":"ana"}]},"konya":{"ad":"Konya","noktalar":[{"id":"otogar","ad":"Konya Otogarı","lat":37.8746,"lng":32.493,"tip":"ana"}]},"gaziantep":{"ad":"Gaziantep","noktalar":[{"id":"otogar","ad":"Gaziantep Otogarı","lat":37.0662,"lng":37.3833,"tip":"ana"}]},"samsun":{"ad":"Samsun","noktalar":[{"id":"otogar","ad":"Samsun Otogarı","lat":41.2867,"lng":36.33,"tip":"ana"}]},"trabzon":{"ad":"Trabzon","noktalar":[{"id":"otogar","ad":"Trabzon Otogarı","lat":41.0015,"lng":39.7178,"tip":"ana"}]},"kayseri":{"ad":"Kayseri","noktalar":[{"id":"otogar","ad":"Kayseri Otogarı","lat":38.7205,"lng":35.4826,"tip":"ana"}]},"mersin":{"ad":"Mersin","noktalar":[{"id":"otogar","ad":"Mersin Otogarı","lat":36.8003,"lng":34.6415,"tip":"ana"}]},"eskisehir":{"ad":"Eskişehir","noktalar":[{"id":"otogar","ad":"Eskişehir Otogarı","lat":39.7767,"lng":30.5206,"tip":"ana"}]},"diyarbakir":{"ad":"Diyarbakır","noktalar":[{"id":"otogar","ad":"Diyarbakır Otogarı","lat":37.9144,"lng":40.2306,"tip":"ana"}]},"denizli":{"ad":"Denizli","noktalar":[{"id":"otogar","ad":"Denizli Otogarı","lat":37.7765,"lng":29.0864,"tip":"ana"}]},"hatay":{"ad":"Hatay","noktalar":[{"id":"otogar","ad":"Hatay Otogarı","lat":36.2025,"lng":36.1606,"tip":"ana"}]},"malatya":{"ad":"Malatya","noktalar":[{"id":"otogar","ad":"Malatya Otogarı","lat":38.3552,"lng":38.3095,"tip":"ana"}]},"erzurum":{"ad":"Erzurum","noktalar":[{"id":"otogar","ad":"Erzurum Otogarı","lat":39.9,"lng":41.27,"tip":"ana"}]},"van":{"ad":"Van","noktalar":[{"id":"otogar","ad":"Van Otogarı","lat":38.4942,"lng":43.38,"tip":"ana"}]},"tekirdag":{"ad":"Tekirdağ","noktalar":[{"id":"otogar","ad":"Tekirdağ Otogarı","lat":40.978,"lng":27.509,"tip":"ana"}]},"sakarya":{"ad":"Sakarya","noktalar":[{"id":"otogar","ad":"Sakarya Otogarı","lat":40.7731,"lng":30.3946,"tip":"ana"}]},"kocaeli":{"ad":"Kocaeli","noktalar":[{"id":"otogar","ad":"Kocaeli Otogarı","lat":40.7654,"lng":29.9408,"tip":"ana"}]},"edirne":{"ad":"Edirne","noktalar":[{"id":"otogar","ad":"Edirne Otogarı","lat":41.6771,"lng":26.5557,"tip":"ana"}]},"balikesir":{"ad":"Balıkesir","noktalar":[{"id":"otogar","ad":"Balıkesir Otogarı","lat":39.6484,"lng":27.8826,"tip":"ana"}]},"mugla":{"ad":"Muğla","noktalar":[{"id":"otogar","ad":"Muğla Otogarı","lat":37.2153,"lng":28.3636,"tip":"ana"},{"id":"bodrum","ad":"Bodrum Otogarı","lat":37.0344,"lng":27.4305,"tip":"cep"},{"id":"marmaris","ad":"Marmaris Otogarı","lat":36.8556,"lng":28.2784,"tip":"cep"}]},"ordu":{"ad":"Ordu","noktalar":[{"id":"otogar","ad":"Ordu Otogarı","lat":40.9862,"lng":37.8797,"tip":"ana"}]},"amasya":{"ad":"Amasya","noktalar":[{"id":"otogar","ad":"Amasya Otogarı","lat":40.6499,"lng":35.8353,"tip":"ana"}]},"afyon":{"ad":"Afyon","noktalar":[{"id":"otogar","ad":"Afyon Otogarı (Kavşak Hub)","lat":38.7507,"lng":30.5567,"tip":"ana"}]},"canakkale":{"ad":"Çanakkale","noktalar":[{"id":"otogar","ad":"Çanakkale Otogarı","lat":40.1553,"lng":26.4142,"tip":"ana"}]},"sivas":{"ad":"Sivas","noktalar":[{"id":"otogar","ad":"Sivas Otogarı","lat":39.7477,"lng":37.0179,"tip":"ana"}]},"kastamonu":{"ad":"Kastamonu","noktalar":[{"id":"otogar","ad":"Kastamonu Otogarı","lat":41.3781,"lng":33.7723,"tip":"ana"}]},"isparta":{"ad":"Isparta","noktalar":[{"id":"otogar","ad":"Isparta Otogarı","lat":37.7648,"lng":30.5566,"tip":"ana"}]},"bolu":{"ad":"Bolu","noktalar":[{"id":"otogar","ad":"Bolu Otogarı","lat":40.7359,"lng":31.6061,"tip":"ana"}]},"duzce":{"ad":"Düzce","noktalar":[{"id":"otogar","ad":"Düzce Otogarı","lat":40.8438,"lng":31.1565,"tip":"ana"}]},"aksaray":{"ad":"Aksaray","noktalar":[{"id":"otogar","ad":"Aksaray Otogarı (Transit Hub)","lat":38.3687,"lng":33.985,"tip":"ana"}]},"kirikkale":{"ad":"Kırıkkale","noktalar":[{"id":"otogar","ad":"Kırıkkale Otogarı","lat":39.8468,"lng":33.5153,"tip":"ana"}]},"bilecik":{"ad":"Bilecik","noktalar":[{"id":"bozuyuk","ad":"Bozüyük Terminali","lat":39.9076,"lng":30.0358,"tip":"cep"}]}};
+
+const SA_GUZERGAHLAR = [{"id":"istanbul-ankara","s1":"istanbul","s2":"ankara","oncelik":1,"sure":"5-6 sa","yol":"TEM (D-100)","sf":[["Sakarya (Arifiye)",40.7344,30.3878],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"sb":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Sakarya (Arifiye)",40.7344,30.3878]],"wp":[]},{"id":"istanbul-izmir","s1":"istanbul","s2":"izmir","oncelik":1,"sure":"7-8 sa","yol":"TEM + O-3","sf":[["Balıkesir Dinlenme",39.6484,27.8826]],"sb":[["Balıkesir Dinlenme",39.6484,27.8826]],"wp":[]},{"id":"istanbul-bursa","s1":"istanbul","s2":"bursa","oncelik":1,"sure":"2.5-3 sa","yol":"Osmangazi Köprüsü","sf":[],"sb":[],"wp":[]},{"id":"istanbul-antalya","s1":"istanbul","s2":"antalya","oncelik":1,"sure":"10-11 sa","yol":"TEM + D-650","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567]],"sb":[["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Eskişehir Geçiş",39.7767,30.5206]]},{"id":"ankara-izmir","s1":"ankara","s2":"izmir","oncelik":1,"sure":"7-8 sa","yol":"O-31 + O-32","sf":[["Afyon Dinlenme",38.7507,30.5567],["Balıkesir Dinlenme",39.6484,27.8826]],"sb":[["Balıkesir Dinlenme",39.6484,27.8826],["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"istanbul-samsun","s1":"istanbul","s2":"samsun","oncelik":2,"sure":"9-10 sa","yol":"TEM + D-010","sf":[["Düzce",40.8438,31.1565],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Amasya Dinlenme",40.6499,35.8353]],"sb":[["Amasya Dinlenme",40.6499,35.8353],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Düzce",40.8438,31.1565]],"wp":[]},{"id":"istanbul-trabzon","s1":"istanbul","s2":"trabzon","oncelik":2,"sure":"11-12 sa","yol":"TEM + D-010","sf":[["Düzce",40.8438,31.1565],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Zonguldak Dinlenme",41.4564,31.7987],["Samsun (Geçiş)",41.2867,36.33]],"sb":[["Samsun (Geçiş)",41.2867,36.33],["Zonguldak Dinlenme",41.4564,31.7987],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Düzce",40.8438,31.1565]],"wp":[]},{"id":"istanbul-adana","s1":"istanbul","s2":"adana","oncelik":2,"sure":"12-13 sa","yol":"TEM + E-90","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877]],"sb":[["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541]]},{"id":"istanbul-konya","s1":"istanbul","s2":"konya","oncelik":2,"sure":"8-9 sa","yol":"TEM + D-715","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567]],"sb":[["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[]},{"id":"istanbul-gaziantep","s1":"istanbul","s2":"gaziantep","oncelik":2,"sure":"14 sa","yol":"TEM + E-90","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877],["Adana (Geçiş)",36.9914,35.3308]],"sb":[["Adana (Geçiş)",36.9914,35.3308],["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541]]},{"id":"istanbul-diyarbakir","s1":"istanbul","s2":"diyarbakir","oncelik":2,"sure":"16 sa","yol":"TEM","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Sivas Dinlenme",39.7477,37.0179],["Malatya (Geçiş)",38.3552,38.3095]],"sb":[["Malatya (Geçiş)",38.3552,38.3095],["Sivas Dinlenme",39.7477,37.0179],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541],["Kayseri Geçiş",38.7205,35.4826]]},{"id":"ankara-antalya","s1":"ankara","s2":"antalya","oncelik":2,"sure":"7-8 sa","yol":"D-650","sf":[["Afyon Dinlenme",38.7507,30.5567]],"sb":[["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"ankara-bursa","s1":"ankara","s2":"bursa","oncelik":2,"sure":"5-6 sa","yol":"TEM","sf":[["Bozüyük/Bilecik",39.9076,30.0358]],"sb":[["Bozüyük/Bilecik",39.9076,30.0358]],"wp":[]},{"id":"izmir-antalya","s1":"izmir","s2":"antalya","oncelik":2,"sure":"5-6 sa","yol":"D-550","sf":[["Aydın/Germencik Dinlenme",37.86,27.87]],"sb":[["Aydın/Germencik Dinlenme",37.86,27.87]],"wp":[]},{"id":"izmir-eskisehir","s1":"izmir","s2":"eskisehir","oncelik":2,"sure":"5-6 sa","yol":"O-3 + TEM","sf":[["Balıkesir Dinlenme",39.6484,27.8826]],"sb":[["Balıkesir Dinlenme",39.6484,27.8826]],"wp":[]},{"id":"bursa-eskisehir","s1":"bursa","s2":"eskisehir","oncelik":2,"sure":"2-3 sa","yol":"TEM","sf":[],"sb":[],"wp":[]},{"id":"antalya-eskisehir","s1":"antalya","s2":"eskisehir","oncelik":2,"sure":"5-6 sa","yol":"D-650 + TEM","sf":[["Afyon Dinlenme",38.7507,30.5567]],"sb":[["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"gaziantep-diyarbakir","s1":"gaziantep","s2":"diyarbakir","oncelik":2,"sure":"2-3 sa","yol":"E-90","sf":[],"sb":[],"wp":[]},{"id":"istanbul-kayseri","s1":"istanbul","s2":"kayseri","oncelik":3,"sure":"9-10 sa","yol":"TEM","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Sivas Dinlenme",39.7477,37.0179]],"sb":[["Sivas Dinlenme",39.7477,37.0179],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541]]},{"id":"istanbul-erzurum","s1":"istanbul","s2":"erzurum","oncelik":3,"sure":"18 sa","yol":"TEM","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Sivas Dinlenme",39.7477,37.0179],["Erzincan Dinlenme",39.75,39.5]],"sb":[["Erzincan Dinlenme",39.75,39.5],["Sivas Dinlenme",39.7477,37.0179],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541],["Kayseri Geçiş",38.7205,35.4826]]},{"id":"istanbul-denizli","s1":"istanbul","s2":"denizli","oncelik":3,"sure":"9 sa","yol":"TEM + O-3","sf":[["Balıkesir Dinlenme",39.6484,27.8826],["Aydın/Germencik Dinlenme",37.86,27.87]],"sb":[["Aydın/Germencik Dinlenme",37.86,27.87],["Balıkesir Dinlenme",39.6484,27.8826]],"wp":[]},{"id":"istanbul-eskisehir","s1":"istanbul","s2":"eskisehir","oncelik":3,"sure":"3.5 sa","yol":"TEM","sf":[["Bozüyük/Bilecik",39.9076,30.0358]],"sb":[["Bozüyük/Bilecik",39.9076,30.0358]],"wp":[]},{"id":"istanbul-edirne","s1":"istanbul","s2":"edirne","oncelik":3,"sure":"2.5 sa","yol":"E-80","sf":[["Lüleburgaz Dinlenme",41.4028,27.3556]],"sb":[["Lüleburgaz Dinlenme",41.4028,27.3556]],"wp":[]},{"id":"istanbul-tekirdag","s1":"istanbul","s2":"tekirdag","oncelik":3,"sure":"2 sa","yol":"E-84","sf":[],"sb":[],"wp":[]},{"id":"istanbul-kocaeli","s1":"istanbul","s2":"kocaeli","oncelik":3,"sure":"1.5 sa","yol":"TEM","sf":[],"sb":[],"wp":[]},{"id":"istanbul-sakarya","s1":"istanbul","s2":"sakarya","oncelik":3,"sure":"2 sa","yol":"TEM","sf":[],"sb":[],"wp":[]},{"id":"istanbul-duzce","s1":"istanbul","s2":"duzce","oncelik":3,"sure":"2.5 sa","yol":"TEM","sf":[],"sb":[],"wp":[]},{"id":"istanbul-bolu","s1":"istanbul","s2":"bolu","oncelik":3,"sure":"3 sa","yol":"TEM","sf":[["Düzce",40.8438,31.1565]],"sb":[["Düzce",40.8438,31.1565]],"wp":[]},{"id":"istanbul-balikesir","s1":"istanbul","s2":"balikesir","oncelik":3,"sure":"4 sa","yol":"TEM + O-3","sf":[],"sb":[],"wp":[]},{"id":"istanbul-malatya","s1":"istanbul","s2":"malatya","oncelik":3,"sure":"14 sa","yol":"TEM","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Sivas Dinlenme",39.7477,37.0179]],"sb":[["Sivas Dinlenme",39.7477,37.0179],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541]]},{"id":"istanbul-van","s1":"istanbul","s2":"van","oncelik":3,"sure":"22 sa","yol":"TEM","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Sivas Dinlenme",39.7477,37.0179],["Erzurum (Geçiş)",39.9,41.27],["Ağrı Dinlenme",39.7191,43.0503]],"sb":[["Ağrı Dinlenme",39.7191,43.0503],["Erzurum (Geçiş)",39.9,41.27],["Sivas Dinlenme",39.7477,37.0179],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541],["Kayseri Geçiş",38.7205,35.4826],["Malatya Geçiş",38.3552,38.3095]]},{"id":"istanbul-ordu","s1":"istanbul","s2":"ordu","oncelik":3,"sure":"11 sa","yol":"TEM + D-010","sf":[["Düzce",40.8438,31.1565],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Amasya Dinlenme",40.6499,35.8353]],"sb":[["Amasya Dinlenme",40.6499,35.8353],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Düzce",40.8438,31.1565]],"wp":[]},{"id":"istanbul-amasya","s1":"istanbul","s2":"amasya","oncelik":3,"sure":"8 sa","yol":"TEM","sf":[["Düzce",40.8438,31.1565],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"sb":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Düzce",40.8438,31.1565]],"wp":[]},{"id":"istanbul-mugla","s1":"istanbul","s2":"mugla","oncelik":3,"sure":"10-11 sa","yol":"TEM + O-3","sf":[["Balıkesir Dinlenme",39.6484,27.8826],["Aydın/Germencik Dinlenme",37.86,27.87]],"sb":[["Aydın/Germencik Dinlenme",37.86,27.87],["Balıkesir Dinlenme",39.6484,27.8826]],"wp":[]},{"id":"istanbul-hatay","s1":"istanbul","s2":"hatay","oncelik":3,"sure":"14-15 sa","yol":"TEM + E-90","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877],["Ceyhan Dinlenme",37.0625,35.8135]],"sb":[["Ceyhan Dinlenme",37.0625,35.8135],["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541]]},{"id":"istanbul-canakkale","s1":"istanbul","s2":"canakkale","oncelik":3,"sure":"5 sa","yol":"E-84","sf":[["Lüleburgaz Dinlenme",41.4028,27.3556]],"sb":[["Lüleburgaz Dinlenme",41.4028,27.3556]],"wp":[]},{"id":"istanbul-sivas","s1":"istanbul","s2":"sivas","oncelik":3,"sure":"11-12 sa","yol":"TEM","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Kırıkkale Dinlenme",39.8468,33.5153]],"sb":[["Kırıkkale Dinlenme",39.8468,33.5153],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[["Ankara Geçiş",39.9208,32.8541]]},{"id":"istanbul-kastamonu","s1":"istanbul","s2":"kastamonu","oncelik":3,"sure":"5-6 sa","yol":"TEM + D-755","sf":[["Düzce",40.8438,31.1565],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"sb":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Düzce",40.8438,31.1565]],"wp":[]},{"id":"istanbul-isparta","s1":"istanbul","s2":"isparta","oncelik":3,"sure":"8-9 sa","yol":"TEM + D-650","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567]],"sb":[["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[]},{"id":"istanbul-afyon","s1":"istanbul","s2":"afyon","oncelik":3,"sure":"6-7 sa","yol":"TEM","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Bozüyük/Bilecik",39.9076,30.0358]],"sb":[["Bozüyük/Bilecik",39.9076,30.0358],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[]},{"id":"ankara-trabzon","s1":"ankara","s2":"trabzon","oncelik":3,"sure":"10-11 sa","yol":"TEM + D-010","sf":[["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Amasya Dinlenme",40.6499,35.8353],["Samsun (Geçiş)",41.2867,36.33]],"sb":[["Samsun (Geçiş)",41.2867,36.33],["Amasya Dinlenme",40.6499,35.8353],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769]],"wp":[]},{"id":"ankara-samsun","s1":"ankara","s2":"samsun","oncelik":3,"sure":"7-8 sa","yol":"D-190","sf":[["Amasya Dinlenme",40.6499,35.8353]],"sb":[["Amasya Dinlenme",40.6499,35.8353]],"wp":[]},{"id":"ankara-adana","s1":"ankara","s2":"adana","oncelik":3,"sure":"7-8 sa","yol":"TEM + E-90","sf":[["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877]],"sb":[["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"ankara-gaziantep","s1":"ankara","s2":"gaziantep","oncelik":3,"sure":"9-10 sa","yol":"TEM + E-90","sf":[["Afyon Dinlenme",38.7507,30.5567],["Adana (Geçiş)",36.9914,35.3308]],"sb":[["Adana (Geçiş)",36.9914,35.3308],["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"ankara-diyarbakir","s1":"ankara","s2":"diyarbakir","oncelik":3,"sure":"11-12 sa","yol":"TEM","sf":[["Sivas Dinlenme",39.7477,37.0179],["Malatya (Geçiş)",38.3552,38.3095]],"sb":[["Malatya (Geçiş)",38.3552,38.3095],["Sivas Dinlenme",39.7477,37.0179]],"wp":[]},{"id":"ankara-konya","s1":"ankara","s2":"konya","oncelik":3,"sure":"3-4 sa","yol":"O-10","sf":[],"sb":[],"wp":[]},{"id":"ankara-kayseri","s1":"ankara","s2":"kayseri","oncelik":3,"sure":"3-4 sa","yol":"TEM","sf":[["Kırıkkale Dinlenme",39.8468,33.5153]],"sb":[["Kırıkkale Dinlenme",39.8468,33.5153]],"wp":[]},{"id":"ankara-erzurum","s1":"ankara","s2":"erzurum","oncelik":3,"sure":"13-14 sa","yol":"TEM","sf":[["Sivas Dinlenme",39.7477,37.0179],["Erzincan Dinlenme",39.75,39.5]],"sb":[["Erzincan Dinlenme",39.75,39.5],["Sivas Dinlenme",39.7477,37.0179]],"wp":[["Kayseri Geçiş",38.7205,35.4826]]},{"id":"ankara-malatya","s1":"ankara","s2":"malatya","oncelik":3,"sure":"8-9 sa","yol":"TEM","sf":[["Sivas Dinlenme",39.7477,37.0179]],"sb":[["Sivas Dinlenme",39.7477,37.0179]],"wp":[]},{"id":"ankara-eskisehir","s1":"ankara","s2":"eskisehir","oncelik":3,"sure":"2-3 sa","yol":"TEM","sf":[],"sb":[],"wp":[]},{"id":"ankara-kastamonu","s1":"ankara","s2":"kastamonu","oncelik":3,"sure":"3-4 sa","yol":"D-755","sf":[],"sb":[],"wp":[]},{"id":"ankara-isparta","s1":"ankara","s2":"isparta","oncelik":3,"sure":"5-6 sa","yol":"D-650","sf":[["Afyon Dinlenme",38.7507,30.5567]],"sb":[["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"ankara-hatay","s1":"ankara","s2":"hatay","oncelik":3,"sure":"11-12 sa","yol":"TEM + E-90","sf":[["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877],["Adana (Geçiş)",36.9914,35.3308]],"sb":[["Adana (Geçiş)",36.9914,35.3308],["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"izmir-adana","s1":"izmir","s2":"adana","oncelik":3,"sure":"9-10 sa","yol":"D-550 + E-90","sf":[["Aydın/Germencik Dinlenme",37.86,27.87],["Denizli (Geçiş)",37.7765,29.0864],["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877]],"sb":[["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567],["Denizli (Geçiş)",37.7765,29.0864],["Aydın/Germencik Dinlenme",37.86,27.87]],"wp":[]},{"id":"izmir-konya","s1":"izmir","s2":"konya","oncelik":3,"sure":"6-7 sa","yol":"O-32 + D-695","sf":[["Aydın/Germencik Dinlenme",37.86,27.87],["Denizli (Geçiş)",37.7765,29.0864]],"sb":[["Denizli (Geçiş)",37.7765,29.0864],["Aydın/Germencik Dinlenme",37.86,27.87]],"wp":[]},{"id":"izmir-trabzon","s1":"izmir","s2":"trabzon","oncelik":3,"sure":"14-15 sa","yol":"TEM","sf":[["Balıkesir Dinlenme",39.6484,27.8826],["Düzce",40.8438,31.1565],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Zonguldak Dinlenme",41.4564,31.7987]],"sb":[["Zonguldak Dinlenme",41.4564,31.7987],["Bolu Dinlenme (Ana Mola)",40.7359,31.5769],["Düzce",40.8438,31.1565],["Balıkesir Dinlenme",39.6484,27.8826]],"wp":[["Bursa Geçiş",40.1956,29.0601]]},{"id":"izmir-gaziantep","s1":"izmir","s2":"gaziantep","oncelik":3,"sure":"10-11 sa","yol":"D-550 + E-90","sf":[["Aydın/Germencik Dinlenme",37.86,27.87],["Adana (Geçiş)",36.9914,35.3308]],"sb":[["Adana (Geçiş)",36.9914,35.3308],["Aydın/Germencik Dinlenme",37.86,27.87]],"wp":[]},{"id":"izmir-bursa","s1":"izmir","s2":"bursa","oncelik":3,"sure":"4-5 sa","yol":"O-3","sf":[["Balıkesir Dinlenme",39.6484,27.8826]],"sb":[["Balıkesir Dinlenme",39.6484,27.8826]],"wp":[]},{"id":"izmir-mugla","s1":"izmir","s2":"mugla","oncelik":3,"sure":"3-4 sa","yol":"D-550","sf":[["Aydın/Germencik Dinlenme",37.86,27.87]],"sb":[["Aydın/Germencik Dinlenme",37.86,27.87]],"wp":[]},{"id":"antalya-adana","s1":"antalya","s2":"adana","oncelik":3,"sure":"5-6 sa","yol":"D-400","sf":[["Mersin Dinlenme",36.8003,34.6415]],"sb":[["Mersin Dinlenme",36.8003,34.6415]],"wp":[]},{"id":"antalya-konya","s1":"antalya","s2":"konya","oncelik":3,"sure":"4-5 sa","yol":"D-695","sf":[],"sb":[],"wp":[]},{"id":"antalya-gaziantep","s1":"antalya","s2":"gaziantep","oncelik":3,"sure":"7-8 sa","yol":"D-400 + E-90","sf":[["Adana (Geçiş)",36.9914,35.3308]],"sb":[["Adana (Geçiş)",36.9914,35.3308]],"wp":[]},{"id":"antalya-mugla","s1":"antalya","s2":"mugla","oncelik":3,"sure":"3-4 sa","yol":"D-400","sf":[],"sb":[],"wp":[]},{"id":"adana-gaziantep","s1":"adana","s2":"gaziantep","oncelik":3,"sure":"2-3 sa","yol":"E-90","sf":[],"sb":[],"wp":[]},{"id":"adana-hatay","s1":"adana","s2":"hatay","oncelik":3,"sure":"2 sa","yol":"E-90","sf":[["Ceyhan Dinlenme",37.0625,35.8135]],"sb":[["Ceyhan Dinlenme",37.0625,35.8135]],"wp":[]},{"id":"adana-diyarbakir","s1":"adana","s2":"diyarbakir","oncelik":3,"sure":"6-7 sa","yol":"E-90","sf":[["Gaziantep (Geçiş)",37.0662,37.3833]],"sb":[["Gaziantep (Geçiş)",37.0662,37.3833]],"wp":[]},{"id":"trabzon-erzurum","s1":"trabzon","s2":"erzurum","oncelik":3,"sure":"4-5 sa","yol":"D-885","sf":[],"sb":[],"wp":[]},{"id":"erzurum-van","s1":"erzurum","s2":"van","oncelik":3,"sure":"5-6 sa","yol":"D-975","sf":[["Ağrı Dinlenme",39.7191,43.0503]],"sb":[["Ağrı Dinlenme",39.7191,43.0503]],"wp":[]},{"id":"diyarbakir-van","s1":"diyarbakir","s2":"van","oncelik":3,"sure":"4-5 sa","yol":"D-965","sf":[],"sb":[],"wp":[]},{"id":"samsun-trabzon","s1":"samsun","s2":"trabzon","oncelik":3,"sure":"3 sa","yol":"D-010","sf":[],"sb":[],"wp":[]},{"id":"bursa-izmir","s1":"bursa","s2":"izmir","oncelik":3,"sure":"4-5 sa","yol":"O-3","sf":[["Balıkesir Dinlenme",39.6484,27.8826]],"sb":[["Balıkesir Dinlenme",39.6484,27.8826]],"wp":[]},{"id":"bursa-antalya","s1":"bursa","s2":"antalya","oncelik":3,"sure":"7-8 sa","yol":"O-3 + D-650","sf":[["Afyon Dinlenme",38.7507,30.5567]],"sb":[["Afyon Dinlenme",38.7507,30.5567]],"wp":[]},{"id":"bursa-canakkale","s1":"bursa","s2":"canakkale","oncelik":3,"sure":"3-4 sa","yol":"D-200","sf":[],"sb":[],"wp":[]},{"id":"konya-gaziantep","s1":"konya","s2":"gaziantep","oncelik":3,"sure":"5-6 sa","yol":"E-90","sf":[["Aksaray Dinlenme",38.3687,33.985]],"sb":[["Aksaray Dinlenme",38.3687,33.985]],"wp":[]},{"id":"konya-diyarbakir","s1":"konya","s2":"diyarbakir","oncelik":3,"sure":"8-9 sa","yol":"E-90","sf":[["Aksaray Dinlenme",38.3687,33.985],["Gaziantep (Geçiş)",37.0662,37.3833]],"sb":[["Gaziantep (Geçiş)",37.0662,37.3833],["Aksaray Dinlenme",38.3687,33.985]],"wp":[]},{"id":"konya-antalya","s1":"konya","s2":"antalya","oncelik":3,"sure":"4-5 sa","yol":"D-695","sf":[],"sb":[],"wp":[]},{"id":"kayseri-sivas","s1":"kayseri","s2":"sivas","oncelik":3,"sure":"2-3 sa","yol":"E-88","sf":[],"sb":[],"wp":[]}];
+
+const SA_ALTERNATIFLER = {"istanbul-canakkale":[{"id":"istanbul-canakkale-trakya","label":"Trakya Hattı","aciklama":"Tekirdağ üzeri","sure":"5 sa","sf":[["Lüleburgaz Dinlenme",41.4028,27.3556],["Tekirdağ",40.978,27.509]],"sb":[["Tekirdağ",40.978,27.509],["Lüleburgaz Dinlenme",41.4028,27.3556]]},{"id":"istanbul-canakkale-bursa","label":"Bursa Hattı","aciklama":"Bursa → Bandırma üzeri","sure":"7.5 sa","sf":[["Bursa Terminal",40.1956,29.0601],["Bandırma",40.3506,27.9769],["Biga",40.2266,27.2399]],"sb":[["Biga",40.2266,27.2399],["Bandırma",40.3506,27.9769],["Bursa Terminal",40.1956,29.0601]]}],"istanbul-izmir":[{"id":"istanbul-izmir-bursa","label":"Bursa Hattı","aciklama":"Osmangazi → Bursa → Balıkesir (yaygın)","sure":"7-8 sa","sf":[["Bursa Terminal",40.1956,29.0601],["Balıkesir Dinlenme",39.6484,27.8826]],"sb":[["Balıkesir Dinlenme",39.6484,27.8826],["Bursa Terminal",40.1956,29.0601]]},{"id":"istanbul-izmir-trakya","label":"Trakya Hattı","aciklama":"Tekirdağ → Çanakkale feribot","sure":"9-10 sa","sf":[["Tekirdağ",40.978,27.509],["Çanakkale",40.1553,26.4142]],"sb":[["Çanakkale",40.1553,26.4142],["Tekirdağ",40.978,27.509]]}],"istanbul-balikesir":[{"id":"istanbul-balikesir-tem","label":"TEM Hattı","aciklama":"Bursa üzeri (yaygın)","sure":"4 sa","sf":[["Bursa Terminal",40.1956,29.0601]],"sb":[["Bursa Terminal",40.1956,29.0601]]},{"id":"istanbul-balikesir-trakya","label":"Trakya Hattı","aciklama":"Tekirdağ → Çanakkale üzeri","sure":"6 sa","sf":[["Tekirdağ",40.978,27.509],["Çanakkale",40.1553,26.4142]],"sb":[["Çanakkale",40.1553,26.4142],["Tekirdağ",40.978,27.509]]}],"istanbul-bursa":[{"id":"istanbul-bursa-osmangazi","label":"Osmangazi Köprüsü","aciklama":"Gebze → Osmangazi (yaygın, hızlı)","sure":"2.5 sa","sf":[],"sb":[]},{"id":"istanbul-bursa-yalova","label":"TEM + Yalova Feribot","aciklama":"Topçular → Yalova feribotu üzeri","sure":"3.5 sa","sf":[["Yalova İskelesi",40.65,29.2667]],"sb":[["Yalova İskelesi",40.65,29.2667]]}],"ankara-izmir":[{"id":"ankara-izmir-afyon","label":"Afyon Hattı","aciklama":"Afyon → Uşak üzeri (yaygın)","sure":"7-8 sa","sf":[["Afyon Dinlenme",38.7507,30.5567],["Uşak",38.6823,29.4082]],"sb":[["Uşak",38.6823,29.4082],["Afyon Dinlenme",38.7507,30.5567]]},{"id":"ankara-izmir-bursa","label":"Bursa Hattı","aciklama":"Bursa → Balıkesir üzeri","sure":"9-10 sa","sf":[["Bolu Dinlenme",40.7359,31.5769],["Bursa Terminal",40.1956,29.0601],["Balıkesir Dinlenme",39.6484,27.8826]],"sb":[["Balıkesir Dinlenme",39.6484,27.8826],["Bursa Terminal",40.1956,29.0601],["Bolu Dinlenme",40.7359,31.5769]]}],"istanbul-adana":[{"id":"istanbul-adana-ic","label":"İç Anadolu Hattı","aciklama":"Ankara → Pozantı üzeri (yaygın)","sure":"12-13 sa","sf":[["Bolu Dinlenme",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877]],"sb":[["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme",40.7359,31.5769]]},{"id":"istanbul-adana-sahil","label":"Akdeniz Sahil Hattı","aciklama":"Antalya → Mersin kıyı yolu","sure":"14-15 sa","sf":[["Afyon Dinlenme",38.7507,30.5567],["Antalya Otogar",36.8969,30.7133],["Mersin Dinlenme",36.8003,34.6415]],"sb":[["Mersin Dinlenme",36.8003,34.6415],["Antalya Otogar",36.8969,30.7133],["Afyon Dinlenme",38.7507,30.5567]]}],"istanbul-gaziantep":[{"id":"istanbul-gaziantep-ic","label":"İç Anadolu Hattı","aciklama":"Ankara → Adana üzeri (yaygın)","sure":"14 sa","sf":[["Bolu Dinlenme",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567],["Pozantı Dinlenme",37.4265,34.877],["Adana Otogar",36.9914,35.3308]],"sb":[["Adana Otogar",36.9914,35.3308],["Pozantı Dinlenme",37.4265,34.877],["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme",40.7359,31.5769]]},{"id":"istanbul-gaziantep-konya","label":"Konya Hattı","aciklama":"Konya → Niğde üzeri","sure":"13 sa","sf":[["Bolu Dinlenme",40.7359,31.5769],["Afyon Dinlenme",38.7507,30.5567],["Konya Otogar",37.8746,32.493]],"sb":[["Konya Otogar",37.8746,32.493],["Afyon Dinlenme",38.7507,30.5567],["Bolu Dinlenme",40.7359,31.5769]]}]};
+
+// OSRM'den çekilen gerçek yol geometrisi waypoint'leri
+// Her ~50km'de bir nokta, gerçek kıvrımlar dahil
+const SA_WAYPOINTS = {"istanbul-ankara":{"noktalar":[[41.0344,28.8993],[41.07806,28.87308],[41.09177,28.93878],[41.09881,29.00669],[41.13678,29.02556],[41.1714,29.05353],[41.19584,29.06141],[41.17338,29.04551],[41.12372,29.02357],[41.08592,29.00721],[41.05489,29.02352],[40.99567,29.11811],[40.97219,29.25551],[40.90592,29.3627],[40.81488,29.45215],[40.77581,29.53158],[40.77723,29.63356],[40.77109,29.77581],[40.77748,29.8776],[40.77998,29.97821],[40.73206,30.05644],[40.69639,30.22651],[40.71234,30.32929],[40.71637,30.38245],[40.71151,30.51538],[40.75385,30.72351],[40.7952,30.84275],[40.83945,30.98797],[40.8039,31.16853],[40.78118,31.33831],[40.72629,31.44577],[40.74277,31.56175],[40.7363,31.56853],[40.76571,31.63374],[40.76698,31.74918],[40.74392,31.86828],[40.76483,32.05075],[40.72418,32.21081],[40.6503,32.23573],[40.59728,32.2862],[40.53917,32.29438],[40.48629,32.33279],[40.40724,32.43819],[40.35814,32.46798],[40.29211,32.47284],[40.22698,32.53347],[40.17871,32.59097],[40.08364,32.60721],[40.02077,32.65125],[39.94724,32.784],[39.92624,32.86028],[39.92086,32.8541]],"km":509,"n":52},"istanbul-izmir":{"noktalar":[[41.0344,28.8993],[41.05881,28.88591],[41.09107,28.89523],[41.0933,28.94857],[41.10113,29.00066],[41.1106,29.02522],[41.15185,29.03064],[41.17326,29.05377],[41.1985,29.06489],[41.18155,29.05091],[41.17415,29.03986],[41.12701,29.0237],[41.09861,29.00735],[41.07301,29.01588],[41.03961,29.0404],[41.00861,29.09387],[40.98277,29.20483],[40.95898,29.28636],[40.9071,29.36137],[40.838,29.41753],[40.8034,29.49773],[40.74186,29.51363],[40.69391,29.48126],[40.64765,29.41412],[40.54125,29.34711],[40.4376,29.24935],[40.3677,29.13236],[40.28925,29.02864],[40.26007,29.06037],[40.22564,29.08624],[40.19425,29.07399],[40.19703,29.05193],[40.22518,28.99196],[40.26575,28.87835],[40.25646,28.70682],[40.25521,28.47021],[40.1145,28.27743],[39.94065,28.14619],[39.79691,28.03669],[39.72624,27.9672],[39.67849,27.93399],[39.64749,27.88785],[39.65622,27.85347],[39.64555,27.7593],[39.63602,27.71123],[39.51862,27.68173],[39.35737,27.62871],[39.19756,27.66318],[39.01499,27.74866],[38.77686,27.65868],[38.54795,27.64315],[38.46333,27.42732],[38.45119,27.2695],[38.42729,27.21184],[38.42585,27.18109],[38.42379,27.14235],[38.41909,27.13999]],"km":555,"n":57},"istanbul-bursa":{"noktalar":[[41.0344,28.8993],[41.0798,28.87328],[41.09364,28.94913],[41.10494,29.01222],[41.15223,29.03053],[41.18462,29.04899],[41.18115,29.05141],[41.14482,29.02802],[41.09599,29.00589],[41.06464,29.01471],[41.00523,29.10019],[40.97312,29.25284],[40.89951,29.36774],[40.80525,29.48085],[40.73618,29.51206],[40.66506,29.43633],[40.52473,29.34214],[40.40179,29.13893],[40.2855,29.03745],[40.24108,29.08828],[40.19386,29.06764],[40.19562,29.06009]],"km":204,"n":22},"istanbul-antalya":{"noktalar":[[41.0344,28.8993],[41.06068,28.88546],[41.09075,28.90331],[41.0975,28.95389],[41.09826,29.00694],[41.12553,29.0237],[41.15982,29.0276],[41.18212,29.0511],[41.19181,29.05458],[41.17312,29.05089],[41.14715,29.02781],[41.10819,29.01951],[41.08147,29.01058],[41.05985,29.0163],[41.00573,29.06834],[40.99037,29.18069],[40.96564,29.27366],[40.91469,29.35449],[40.84111,29.41471],[40.8034,29.49773],[40.73896,29.51309],[40.68619,29.47088],[40.64137,29.39422],[40.51422,29.34074],[40.42647,29.20465],[40.33154,29.10798],[40.27628,29.04563],[40.25006,29.06794],[40.21027,29.0824],[40.19507,29.06033],[40.19163,29.13834],[40.18953,29.2038],[40.17611,29.24466],[40.16862,29.3226],[40.14916,29.36598],[40.0858,29.51715],[40.00877,29.65111],[39.95393,29.68488],[39.92863,29.73582],[39.91545,29.80332],[39.91798,29.9985],[39.90667,30.03572],[39.8803,30.10133],[39.78177,30.19398],[39.67913,30.15365],[39.57336,30.10201],[39.52322,30.05628],[39.43079,29.99465],[39.37699,30.05343],[39.2885,30.07711],[39.08658,30.19613],[38.90113,30.38122],[38.81744,30.44214],[38.76608,30.53461],[38.76617,30.53431],[38.79188,30.41864],[38.70155,30.31995],[38.59087,30.2644],[38.49631,30.24059],[38.36804,30.21354],[38.13192,30.19468],[38.00922,30.28367],[37.89838,30.35571],[37.82189,30.397],[37.73202,30.3081],[37.69962,30.32015],[37.65153,30.37102],[37.58846,30.42454],[37.53748,30.47863],[37.48412,30.56406],[37.32431,30.49323],[37.19234,30.49226],[37.15556,30.50638],[37.13595,30.50943],[37.10231,30.62107],[36.96038,30.6211],[36.9248,30.66706],[36.89946,30.7062],[36.8969,30.71328]],"km":772,"n":79},"istanbul-samsun":{"noktalar":[[41.0344,28.8993],[41.06068,28.88546],[41.09075,28.90331],[41.0975,28.95389],[41.09826,29.00694],[41.12553,29.0237],[41.15982,29.0276],[41.18212,29.0511],[41.19181,29.05458],[41.17312,29.05089],[41.14715,29.02781],[41.10819,29.01951],[41.08147,29.01058],[41.05985,29.0163],[41.00573,29.06834],[40.99037,29.18069],[40.96564,29.27366],[40.91469,29.35449],[40.84111,29.41471],[40.8034,29.49773],[40.77352,29.55285],[40.7786,29.63082],[40.77704,29.72951],[40.76901,29.8356],[40.77687,29.9153],[40.78097,29.97759],[40.74778,30.04102],[40.71317,30.11829],[40.6816,30.25947],[40.7125,30.33197],[40.73556,30.38855],[40.71823,30.42096],[40.7196,30.59444],[40.75449,30.73416],[40.78649,30.82027],[40.82758,30.92563],[40.83159,31.04099],[40.84827,31.14056],[40.80555,31.16807],[40.78689,31.27547],[40.76152,31.39827],[40.72382,31.45127],[40.73928,31.54905],[40.73586,31.57126],[40.74479,31.56157],[40.76747,31.6435],[40.77122,31.73294],[40.734,31.8085],[40.75059,31.93558],[40.77097,32.02825],[40.79134,32.20794],[40.82589,32.34875],[40.86268,32.56037],[40.84271,32.66459],[40.8303,32.77862],[40.80363,33.04199],[40.84543,33.2516],[40.85163,33.41767],[40.90728,33.6199],[40.89761,33.74808],[40.93876,33.86058],[40.98095,34.00433],[41.02061,34.1019],[41.05561,34.28148],[41.09925,34.40181],[41.07051,34.5234],[40.98567,34.66161],[40.97964,34.79838],[40.97063,34.90891],[40.98629,35.03496],[40.92501,35.1627],[40.86396,35.42416],[40.87381,35.60775],[40.78118,35.68326],[40.69232,35.81975],[40.65026,35.83372],[40.66385,35.834],[40.73028,35.77649],[40.832,35.63266],[40.93961,35.65777],[40.99699,35.78439],[41.05311,35.95053],[41.09235,36.09974],[41.17638,36.11374],[41.2688,36.17822],[41.29019,36.27857],[41.28793,36.32161],[41.28668,36.32995]],"km":869,"n":88},"istanbul-trabzon":{"noktalar":[[41.0344,28.8993],[41.06158,28.8851],[41.09073,28.90742],[41.09892,28.95715],[41.10102,29.00953],[41.13075,29.02449],[41.1729,29.0426],[41.1857,29.04907],[41.18501,29.0483],[41.17289,29.0441],[41.13279,29.02469],[41.09951,29.00788],[41.07233,29.01596],[41.03209,29.04532],[40.99584,29.1164],[40.97621,29.23026],[40.94306,29.31735],[40.87514,29.39011],[40.80612,29.47717],[40.7799,29.52673],[40.78615,29.61052],[40.77973,29.69554],[40.76734,29.81306],[40.77898,29.88199],[40.78557,29.96715],[40.76163,30.0332],[40.7201,30.10864],[40.68206,30.25138],[40.71185,30.32647],[40.73567,30.38814],[40.71823,30.42096],[40.72027,30.59935],[40.75613,30.74236],[40.78852,30.82994],[40.83544,30.94201],[40.8309,31.0398],[40.84796,31.15235],[40.80267,31.16874],[40.78604,31.29703],[40.75739,31.42803],[40.72062,31.48854],[40.74143,31.56392],[40.736,31.57095],[40.76076,31.5878],[40.77588,31.68704],[40.75743,31.77191],[40.74509,31.87491],[40.76315,32.00751],[40.80744,32.03517],[40.87967,32.09129],[40.9925,32.06446],[41.05566,32.06627],[41.10811,32.00576],[41.16712,31.92986],[41.22824,31.96811],[41.30248,32.10406],[41.36599,31.98266],[41.412,31.92148],[41.4312,31.86162],[41.45156,31.8274],[41.45153,31.79259],[41.45132,31.81405],[41.44374,31.82926],[41.43013,31.8895],[41.39028,31.93597],[41.34696,32.02533],[41.27931,32.15163],[41.2192,32.22521],[41.19886,32.33627],[41.16676,32.45205],[41.15841,32.54578],[41.19447,32.6191],[41.2111,32.64205],[41.21944,32.69065],[41.2032,32.80942],[41.20336,32.94726],[41.23195,33.07525],[41.22747,33.24448],[41.24743,33.34287],[41.29447,33.48378],[41.31097,33.59729],[41.37514,33.73326],[41.43018,33.82735],[41.48052,34.08845],[41.56067,34.23867],[41.62645,34.39834],[41.62637,34.51956],[41.61781,34.62493],[41.53834,34.69152],[41.58126,34.84335],[41.69961,34.91358],[41.8145,35.04889],[41.8263,35.16504],[41.75076,35.23832],[41.66385,35.44009],[41.61665,35.60122],[41.5997,35.7846],[41.55198,35.92462],[41.5123,36.02967],[41.4427,36.1357],[41.39135,36.20168],[41.33257,36.28422],[41.29936,36.32919],[41.27146,36.36943],[41.2294,36.49567],[41.21344,36.67816],[41.21825,36.90293],[41.18738,37.02912],[41.11348,37.25866],[41.10583,37.37917],[41.06163,37.47404],[41.02125,37.53279],[40.99937,37.62796],[40.98575,37.78198],[40.99831,37.87275],[40.97553,37.92092],[40.9737,38.0237],[40.94869,38.15979],[40.94227,38.28567],[40.913,38.37554],[40.91435,38.44618],[40.91688,38.52994],[40.96231,38.61121],[40.94916,38.67308],[40.99155,38.78449],[41.03947,38.92686],[41.04592,39.09682],[41.05166,39.23755],[41.0964,39.39944],[41.06579,39.51835],[41.01561,39.59497],[41.00475,39.69611],[41.00169,39.71766],[41.0015,39.71766]],"km":1322,"n":134},"istanbul-adana":{"noktalar":[[41.0344,28.8993],[41.05618,28.88605],[41.08976,28.88755],[41.09165,28.93955],[41.10073,28.98614],[41.10704,29.01534],[41.13753,29.02584],[41.17302,29.04202],[41.18312,29.05044],[41.19374,29.05832],[41.17386,29.05392],[41.15434,29.02529],[41.11995,29.024],[41.09572,29.00574],[41.07278,29.01594],[41.05192,29.02759],[41.00822,29.08161],[40.99031,29.18276],[40.97022,29.26622],[40.93177,29.34299],[40.86973,29.39639],[40.80903,29.4653],[40.7889,29.51836],[40.7711,29.58153],[40.77824,29.64642],[40.77845,29.73917],[40.7692,29.8331],[40.77905,29.8866],[40.78509,29.96251],[40.76865,30.01189],[40.72712,30.07242],[40.70408,30.19549],[40.69338,30.28555],[40.71093,30.35024],[40.73446,30.38764],[40.71806,30.405],[40.71572,30.54869],[40.74882,30.68336],[40.77279,30.78336],[40.80666,30.85944],[40.83983,30.96404],[40.81664,31.08093],[40.79253,31.20648],[40.78183,31.31623],[40.75745,31.42691],[40.72347,31.4685],[40.73861,31.55336],[40.73583,31.5709],[40.73622,31.56636],[40.76434,31.61905],[40.77752,31.69943],[40.75891,31.76994],[40.74159,31.84598],[40.7537,31.96082],[40.75115,32.07978],[40.7316,32.20194],[40.67831,32.22443],[40.63211,32.23773],[40.60118,32.27936],[40.56477,32.31068],[40.51784,32.28661],[40.48798,32.32537],[40.44214,32.39947],[40.39037,32.44433],[40.3623,32.46413],[40.31889,32.48904],[40.27607,32.48512],[40.23114,32.52299],[40.20148,32.58625],[40.16028,32.59525],[40.08875,32.61028],[40.02565,32.61521],[40.02142,32.67917],[40.02086,32.80391],[40.01631,32.91076],[39.97048,32.98166],[39.93087,33.01201],[39.9644,33.10107],[39.95215,33.18814],[39.92232,33.26098],[39.93823,33.32029],[39.94105,33.41098],[39.86479,33.45873],[39.84622,33.51596],[39.86457,33.47753],[39.92247,33.43156],[39.92867,33.34112],[39.94336,33.29415],[39.9139,33.23427],[39.96641,33.14817],[39.95202,33.06436],[39.91835,32.93352],[39.93246,32.90708],[39.92819,32.86771],[39.91499,32.82403],[39.90534,32.70031],[39.85458,32.60616],[39.7326,32.37918],[39.58859,32.16945],[39.57636,32.06758],[39.53849,31.68698],[39.43473,31.53013],[39.23785,31.37888],[39.05758,31.08207],[38.99245,30.95936],[38.92193,30.90098],[38.91294,30.86089],[38.85995,30.77256],[38.80768,30.6383],[38.75586,30.55395],[38.72455,30.57325],[38.67273,30.7438],[38.60067,30.89407],[38.59074,31.07652],[38.51792,31.25337],[38.44248,31.3262],[38.36848,31.44203],[38.31789,31.57949],[38.29403,31.72017],[38.28511,31.85667],[38.2837,31.95347],[38.23411,32.23237],[38.19975,32.42948],[38.07487,32.50958],[37.94479,32.51221],[37.87483,32.54791],[37.84432,32.74222],[37.73772,33.04828],[37.71568,33.45999],[37.70727,33.65429],[37.5251,34.03831],[37.6112,34.2328],[37.63541,34.44083],[37.61712,34.60652],[37.65051,34.72723],[37.53223,34.80678],[37.45969,34.8786],[37.39729,34.85906],[37.3515,34.81976],[37.30282,34.78606],[37.24679,34.80019],[37.19572,34.83208],[37.15263,34.8393],[37.11989,34.90183],[37.07045,34.94075],[37.00874,34.96734],[37.02982,35.11652],[37.02982,35.2312],[37.02301,35.33886],[36.9965,35.34213],[36.99139,35.3308]],"km":1483,"n":151},"istanbul-konya":{"noktalar":[[41.0344,28.8993],[41.0601,28.88564],[41.09103,28.89979],[41.09649,28.95253],[41.09918,29.00626],[41.11987,29.02417],[41.15512,29.02567],[41.18049,29.0515],[41.19711,29.06228],[41.17339,29.0538],[41.15221,29.0302],[41.11045,29.02508],[41.08683,29.00681],[41.06633,29.01212],[41.01324,29.05865],[40.99457,29.15277],[40.97425,29.25019],[40.93383,29.33732],[40.86683,29.39846],[40.80499,29.48292],[40.77871,29.52735],[40.78385,29.60853],[40.77974,29.68751],[40.76902,29.80214],[40.77306,29.87126],[40.78599,29.95209],[40.76951,30.00794],[40.72624,30.07788],[40.70277,30.21412],[40.6982,30.30187],[40.71003,30.38407],[40.71198,30.3853],[40.71319,30.49692],[40.74082,30.65391],[40.77011,30.77323],[40.80564,30.85631],[40.84147,30.97346],[40.81277,31.10578],[40.78891,31.25332],[40.77222,31.36171],[40.73456,31.44635],[40.73288,31.5292],[40.73606,31.56716],[40.7362,31.56731],[40.73476,31.53242],[40.73182,31.44463],[40.76841,31.37139],[40.786,31.26374],[40.81096,31.12237],[40.84183,30.97741],[40.80764,30.86372],[40.77065,30.77881],[40.74231,30.65959],[40.71289,30.49916],[40.71566,30.38175],[40.63528,30.33565],[40.58432,30.33066],[40.53823,30.29386],[40.51107,30.21313],[40.49594,30.08972],[40.41724,30.03748],[40.36676,30.03743],[40.30703,30.05643],[40.22342,30.03186],[40.11339,30.00716],[40.05494,30.02306],[39.992,30.00472],[39.92425,29.99591],[39.90375,30.03293],[39.86632,30.10427],[39.75896,30.17206],[39.66943,30.15336],[39.57597,30.08465],[39.51174,30.0364],[39.43173,29.9942],[39.37418,30.06432],[39.27536,30.08707],[39.07847,30.21079],[38.89084,30.38873],[38.80944,30.44619],[38.76626,30.53672],[38.73482,30.57489],[38.67287,30.74346],[38.59775,30.91135],[38.57935,31.12149],[38.48933,31.27625],[38.40603,31.36643],[38.34649,31.50604],[38.29431,31.69084],[38.29007,31.80646],[38.28546,31.94064],[38.23148,32.21816],[38.1914,32.44502],[38.05644,32.5164],[37.91905,32.50888],[37.87456,32.49304]],"km":959,"n":96},"istanbul-gaziantep":{"noktalar":[[41.0344,28.8993],[41.05339,28.88588],[41.08821,28.88338],[41.09395,28.93071],[41.0997,28.9715],[41.10158,29.00985],[41.12553,29.0237],[41.15374,29.02581],[41.17365,29.05387],[41.19432,29.05927],[41.18468,29.04889],[41.17374,29.04636],[41.14715,29.02781],[41.11024,29.02505],[41.09136,29.00535],[41.06966,29.01471],[41.03754,29.04249],[41.00942,29.08639],[40.99037,29.18069],[40.97152,29.25907],[40.93593,29.33254],[40.87948,29.38287],[40.82359,29.44143],[40.79926,29.50837],[40.77352,29.55285],[40.78815,29.61877],[40.77992,29.69148],[40.77044,29.78981],[40.76556,29.8584],[40.78326,29.92903],[40.78097,29.97759],[40.76163,30.0332],[40.72484,30.09239],[40.70331,30.21149],[40.69661,30.289],[40.71052,30.35224],[40.73556,30.38855],[40.7165,30.39749],[40.71273,30.52734],[40.74216,30.66005],[40.76927,30.76573],[40.79171,30.83747],[40.82758,30.92563],[40.84466,31.01582],[40.80949,31.14317],[40.78529,31.26807],[40.77454,31.35767],[40.75664,31.45314],[40.72291,31.49857],[40.74282,31.56205],[40.73803,31.57347],[40.74336,31.56323],[40.76528,31.62626],[40.77752,31.69943],[40.76018,31.76702],[40.7393,31.8349],[40.75251,31.94509],[40.76345,32.05773],[40.73946,32.1815],[40.69425,32.22273],[40.65156,32.23659],[40.6131,32.2612],[40.58227,32.28926],[40.5478,32.29992],[40.49989,32.29119],[40.48105,32.34511],[40.43145,32.42398],[40.38263,32.44693],[40.35624,32.46884],[40.31473,32.4838],[40.27275,32.48224],[40.23168,32.52174],[40.20258,32.5801],[40.16647,32.58947],[40.10075,32.61447],[40.03964,32.59624],[39.96724,32.62999],[39.89942,32.62257],[39.87182,32.633],[39.81232,32.55686],[39.707,32.28139],[39.57738,32.14738],[39.57345,32.04383],[39.52969,31.62865],[39.4299,31.52621],[39.23605,31.37612],[39.05764,31.08224],[38.9998,30.97139],[38.92377,30.90499],[38.91531,30.87085],[38.87298,30.79332],[38.80458,30.66913],[38.76106,30.57188],[38.74547,30.57379],[38.69529,30.67341],[38.64921,30.78625],[38.59573,30.98929],[38.56623,31.17252],[38.48544,31.27881],[38.42524,31.34534],[38.35766,31.45774],[38.31539,31.59525],[38.29189,31.72644],[38.28502,31.85865],[38.28385,31.94668],[38.23077,32.2137],[38.20329,32.39874],[38.11226,32.49329],[37.99099,32.51836],[37.9073,32.52847],[37.86494,32.57929],[37.7878,32.92391],[37.71044,33.26998],[37.70658,33.551],[37.61594,33.85105],[37.52848,34.07348],[37.63816,34.33703],[37.63017,34.47254],[37.62755,34.63059],[37.62832,34.73339],[37.52968,34.81235],[37.45894,34.87897],[37.39996,34.8602],[37.35482,34.82448],[37.31072,34.7894],[37.26403,34.79966],[37.211,34.80782],[37.16802,34.85288],[37.13321,34.8706],[37.09409,34.9367],[37.04053,34.95115],[37.01996,35.02428],[37.03987,35.16103],[37.03076,35.26618],[37.01893,35.34111],[36.99043,35.33596],[37.007,35.32518],[37.02509,35.36158],[37.00626,35.51593],[37.00524,35.69458],[36.98183,35.78538],[36.99533,35.91465],[37.0369,36.08407],[37.08819,36.17126],[37.142,36.323],[37.20049,36.39057],[37.18261,36.49028],[37.18805,36.6096],[37.17748,36.70363],[37.18736,36.81668],[37.2473,37.03211],[37.2649,37.21941],[37.20154,37.26387],[37.11932,37.31613],[37.06811,37.37353],[37.06552,37.38338]],"km":1531,"n":156},"istanbul-diyarbakir":{"noktalar":[[41.0344,28.8993],[41.06377,28.88383],[41.0916,28.91245],[41.09978,28.96797],[41.10618,29.01372],[41.14211,29.02842],[41.17197,29.0528],[41.20015,29.06447],[41.1779,29.05442],[41.15235,29.03005],[41.1092,29.02424],[41.08134,29.01068],[41.05783,29.01829],[41.00944,29.08994],[40.98182,29.21302],[40.95027,29.30544],[40.88203,29.37954],[40.80841,29.46782],[40.77917,29.52706],[40.78827,29.61416],[40.77904,29.71267],[40.76917,29.83025],[40.77736,29.91709],[40.77365,29.98147],[40.73751,30.04848],[40.70607,30.17399],[40.69741,30.29168],[40.7097,30.38263],[40.71015,30.38636],[40.71238,30.52504],[40.75111,30.69121],[40.78211,30.80435],[40.82384,30.91986],[40.82965,31.04553],[40.79222,31.20804],[40.78094,31.34025],[40.73568,31.44799],[40.73701,31.53545],[40.73623,31.56989],[40.74469,31.5616],[40.76805,31.65084],[40.76712,31.74865],[40.73947,31.83618],[40.76097,31.97768],[40.73963,32.13479],[40.69794,32.22228],[40.63951,32.23132],[40.59845,32.28472],[40.55264,32.3039],[40.49403,32.29971],[40.44515,32.38516],[40.3885,32.44338],[40.3512,32.4712],[40.29578,32.47186],[40.24114,32.50326],[40.20195,32.58426],[40.14758,32.59725],[40.0583,32.58928],[40.02147,32.64168],[40.01334,32.788],[40.01579,32.92422],[39.93538,33.0018],[39.95402,33.07048],[39.96144,33.17773],[39.92224,33.26541],[39.92925,33.33979],[39.90929,33.43186],[39.84898,33.50803],[39.87256,33.57085],[39.8986,33.68696],[39.93594,33.92608],[39.85819,34.07832],[39.70291,34.38614],[39.69178,34.66271],[39.81558,34.78284],[39.85647,34.89911],[39.80804,35.19942],[39.69082,35.71337],[39.66867,35.86697],[39.71348,35.88735],[39.79029,36.00383],[39.80419,36.03058],[39.81007,36.06136],[39.81106,36.07341],[39.81582,36.10128],[39.81414,36.11453],[39.80106,36.1696],[39.80301,36.22062],[39.82112,36.31985],[39.82855,36.38126],[39.83579,36.44302],[39.84841,36.51756],[39.86442,36.57619],[39.84899,36.68398],[39.74974,36.79525],[39.72558,36.96873],[39.74075,37.00756],[39.74061,37.02017],[39.68348,37.00748],[39.63353,37.01186],[39.57785,37.02759],[39.46864,37.01431],[39.39425,37.08576],[39.2663,37.16718],[39.19593,37.27621],[39.15893,37.48404],[39.12862,37.55704],[39.08626,37.64109],[39.06665,37.69607],[39.01741,37.77387],[38.99197,37.84726],[38.93429,37.87913],[38.86933,37.89877],[38.83114,37.91237],[38.78222,37.95982],[38.74041,37.99588],[38.72197,38.07587],[38.69171,38.12947],[38.6242,38.16502],[38.53352,38.2531],[38.44738,38.22678],[38.33593,38.23492],[38.35516,38.30445],[38.34878,38.36783],[38.33228,38.50445],[38.40134,38.74633],[38.47482,38.91629],[38.43725,39.07577],[38.41555,39.18563],[38.43531,39.24738],[38.47193,39.27137],[38.48745,39.32768],[38.50176,39.39031],[38.52469,39.49415],[38.46473,39.60181],[38.42863,39.64266],[38.39647,39.67674],[38.35869,39.67776],[38.34034,39.70688],[38.253,39.77422],[38.11055,39.99548],[37.98681,40.14169],[37.9188,40.23206],[37.9143,40.23065]],"km":1423,"n":144},"istanbul-kayseri":{"noktalar":[[41.0344,28.8993],[41.0628,28.88446],[41.09107,28.90999],[41.0997,28.96328],[41.10452,29.0119],[41.13876,29.02686],[41.17341,29.0498],[41.19329,29.05732],[41.18182,29.05101],[41.16096,29.02774],[41.11642,29.02441],[41.08977,29.00588],[41.06633,29.01229],[41.00937,29.06076],[40.99132,29.17478],[40.96564,29.27366],[40.90909,29.35913],[40.83354,29.42542],[40.7987,29.50985],[40.76906,29.57719],[40.77864,29.65774],[40.77087,29.77711],[40.76725,29.86585],[40.7858,29.94938],[40.76891,30.01068],[40.72484,30.09239],[40.692,30.23586],[40.70671,30.31851],[40.72918,30.38298],[40.71814,30.40612],[40.7196,30.59444],[40.75613,30.74236],[40.78976,30.83335],[40.83809,30.94786],[40.81513,31.08726],[40.78994,31.24947],[40.76992,31.36635],[40.72774,31.44469],[40.74038,31.54446],[40.73608,31.57139],[40.74853,31.56189],[40.76862,31.65501],[40.76629,31.75124],[40.73979,31.83784],[40.76081,31.97716],[40.74043,32.13108],[40.70202,32.22236],[40.64425,32.23067],[40.60251,32.27766],[40.55872,32.30532],[40.49989,32.29119],[40.4594,32.37166],[40.39782,32.43993],[40.3623,32.46413],[40.31027,32.48089],[40.25469,32.48041],[40.21549,32.5616],[40.1679,32.58859],[40.08556,32.60834],[40.01821,32.61828],[40.01219,32.71667],[40.02195,32.88449],[39.97962,32.97365],[39.93476,33.01867],[39.96939,33.11942],[39.91372,33.23427],[39.94843,33.30058],[39.93274,33.39977],[39.86372,33.47173],[39.85062,33.51586],[39.86723,33.61451],[39.91914,33.75809],[39.90364,33.98515],[39.80202,34.11543],[39.66811,34.49217],[39.74085,34.72659],[39.82239,34.81496],[39.853,34.95889],[39.78191,35.23991],[39.6749,35.79103],[39.67127,35.86975],[39.71916,35.9024],[39.79692,36.00789],[39.80379,36.03172],[39.81032,36.06351],[39.8113,36.07393],[39.81574,36.10142],[39.81414,36.11462],[39.80114,36.16947],[39.80288,36.22024],[39.82115,36.31911],[39.82493,36.36408],[39.83525,36.43254],[39.85079,36.50753],[39.86019,36.56319],[39.86195,36.64948],[39.77844,36.73869],[39.71829,36.94597],[39.7392,37.00211],[39.74655,37.01801],[39.69577,37.00797],[39.65621,37.0083],[39.60563,37.03069],[39.56929,36.9641],[39.50718,36.82932],[39.45267,36.66312],[39.41793,36.53289],[39.35518,36.40232],[39.25552,36.1527],[39.14185,36.08304],[39.03164,35.94766],[38.9352,35.83427],[38.86615,35.69513],[38.78196,35.57704],[38.73375,35.52954],[38.72044,35.48258]],"km":1146,"n":116},"istanbul-erzurum":{"noktalar":[[41.0344,28.8993],[41.06158,28.8851],[41.09073,28.90742],[41.09892,28.95715],[41.10102,29.00953],[41.13075,29.02449],[41.1729,29.0426],[41.1857,29.04907],[41.18501,29.0483],[41.17289,29.0441],[41.13279,29.02469],[41.09951,29.00788],[41.07233,29.01596],[41.03209,29.04532],[40.99584,29.1164],[40.97621,29.23026],[40.94306,29.31735],[40.87514,29.39011],[40.80612,29.47717],[40.7799,29.52673],[40.78615,29.61052],[40.77973,29.69554],[40.76734,29.81306],[40.77898,29.88199],[40.78557,29.96715],[40.76163,30.0332],[40.7201,30.10864],[40.68206,30.25138],[40.71185,30.32647],[40.73567,30.38814],[40.71823,30.42096],[40.72027,30.59935],[40.75613,30.74236],[40.78852,30.82994],[40.83544,30.94201],[40.81926,31.07361],[40.79107,31.21895],[40.77924,31.34729],[40.73878,31.45437],[40.73259,31.52797],[40.73596,31.56756],[40.73613,31.5667],[40.766,31.63088],[40.77889,31.72116],[40.73823,31.79481],[40.75249,31.92553],[40.76203,32.05997],[40.73242,32.20114],[40.67089,32.23703],[40.6154,32.24816],[40.58227,32.28926],[40.53758,32.29199],[40.49301,32.31849],[40.44214,32.39947],[40.3834,32.44521],[40.34958,32.47508],[40.29531,32.47181],[40.24296,32.49941],[40.20445,32.57447],[40.1595,32.5957],[40.06878,32.59793],[40.01608,32.622],[40.01021,32.72465],[40.01967,32.887],[39.97962,32.97365],[39.93256,33.01497],[39.96992,33.11501],[39.91806,33.22529],[39.94681,33.29709],[39.92739,33.38872],[39.86928,33.45042],[39.87184,33.5915],[39.90307,33.70689],[39.93001,33.95898],[39.84029,34.07646],[39.70632,34.36589],[39.68773,34.65168],[39.80067,34.76709],[39.84125,34.86881],[39.81346,35.17994],[39.66933,35.56233],[39.66109,35.85717],[39.69967,35.87834],[39.76902,35.93551],[39.80642,36.01491],[39.8038,36.04382],[39.80859,36.06797],[39.81427,36.08848],[39.81323,36.10413],[39.81312,36.11826],[39.79717,36.17508],[39.81374,36.24757],[39.82102,36.32068],[39.8286,36.38145],[39.83573,36.44231],[39.85061,36.50841],[39.86036,36.56372],[39.86464,36.64304],[39.78457,36.73622],[39.72134,36.91967],[39.73631,36.99586],[39.74677,37.0179],[39.75501,37.03692],[39.78548,37.08733],[39.82524,37.15636],[39.83182,37.30213],[39.85728,37.41468],[39.87047,37.59672],[39.87403,37.6816],[39.84943,37.84946],[39.87269,37.93981],[39.89162,38.00361],[39.87078,38.10232],[39.85644,38.22641],[39.86176,38.34002],[39.87174,38.41958],[39.91284,38.47577],[39.92909,38.56809],[39.95703,38.63841],[39.92378,38.7537],[39.89117,38.96423],[39.868,39.09644],[39.88452,39.19644],[39.84322,39.32458],[39.74733,39.47997],[39.72914,39.54559],[39.64596,39.757],[39.58775,39.89095],[39.56694,40.01276],[39.57486,40.14861],[39.72237,40.24703],[39.76684,40.42639],[39.79758,40.49439],[39.80202,40.53108],[39.82995,40.55381],[39.86173,40.62406],[39.92063,40.69767],[39.98615,40.9607],[39.94169,41.11777],[39.89999,41.26998]],"km":1382,"n":140},"istanbul-van":{"noktalar":[[41.0344,28.8993],[41.05846,28.88595],[41.091,28.89428],[41.09281,28.94759],[41.10144,28.99853],[41.10989,29.02507],[41.15082,29.03006],[41.17143,29.05358],[41.19584,29.06141],[41.18295,29.05033],[41.17321,29.04188],[41.13192,29.02453],[41.10139,29.00935],[41.07638,29.01431],[41.05409,29.02487],[41.00791,29.08072],[40.98963,29.1906],[40.96497,29.27451],[40.92036,29.35165],[40.849,29.41192],[40.80563,29.49031],[40.7755,29.53376],[40.78778,29.61278],[40.77992,29.6905],[40.76951,29.79959],[40.77009,29.86869],[40.78515,29.9468],[40.77056,29.99808],[40.73095,30.05895],[40.70513,30.18169],[40.69213,30.28439],[40.70996,30.35493],[40.73195,30.38246],[40.71835,30.43423],[40.71998,30.59717],[40.75415,30.72978],[40.78433,30.80969],[40.81698,30.91178],[40.84525,31.01104],[40.80658,31.15099],[40.79042,31.28315],[40.76132,31.40138],[40.72432,31.44897],[40.74021,31.54119],[40.73611,31.56891],[40.73615,31.56656],[40.76504,31.62496],[40.77877,31.70637],[40.75201,31.7763],[40.74657,31.88143],[40.76242,32.00069],[40.73977,32.1341],[40.71014,32.22308],[40.65654,32.23652],[40.61344,32.26261],[40.57843,32.2968],[40.53618,32.2906],[40.4935,32.31544],[40.44412,32.38648],[40.3942,32.44432],[40.3638,32.46359],[40.31812,32.48837],[40.2698,32.479],[40.22587,32.5396],[40.19205,32.59275],[40.14256,32.59774],[40.06174,32.59106],[40.01571,32.62485],[40.01179,32.71879],[40.03222,32.87348],[39.98233,32.95711],[39.91957,33.00379],[39.95911,33.08516],[39.96268,33.17541],[39.91837,33.25616],[39.93946,33.31722],[39.94074,33.41193],[39.86387,33.46761],[39.86905,33.60037],[39.90273,33.70665],[39.93615,33.92531],[39.87499,34.06443],[39.7454,34.24632],[39.66215,34.56258],[39.75752,34.735],[39.82441,34.82317],[39.86028,34.93457],[39.80571,35.2037],[39.68845,35.63527],[39.66232,35.86032],[39.69978,35.87834],[39.76353,35.92824],[39.80586,36.01338],[39.80354,36.03293],[39.81033,36.06345],[39.81069,36.07278],[39.81624,36.10025],[39.81274,36.10582],[39.80758,36.14259],[39.7963,36.18238],[39.81774,36.26193],[39.81967,36.32661],[39.82845,36.38087],[39.83451,36.41646],[39.85113,36.50335],[39.8567,36.5472],[39.86862,36.58383],[39.8242,36.70661],[39.7323,36.81251],[39.72559,36.96876],[39.74018,37.00571],[39.74655,37.01801],[39.75622,37.04087],[39.78451,37.08529],[39.82338,37.14874],[39.82571,37.27619],[39.85284,37.39536],[39.87873,37.53925],[39.86471,37.64153],[39.87536,37.74105],[39.86232,37.89502],[39.87223,37.96138],[39.89209,38.01701],[39.8717,38.10878],[39.85644,38.22641],[39.8626,38.3304],[39.86614,38.42439],[39.8938,38.46044],[39.92536,38.5404],[39.93225,38.61395],[39.95304,38.71734],[39.90573,38.77682],[39.87869,39.03956],[39.87202,39.11692],[39.88318,39.21013],[39.8412,39.32767],[39.74697,39.41548],[39.71901,39.48194],[39.71257,39.58634],[39.62675,39.79046],[39.58716,39.89641],[39.56779,40.0082],[39.56477,40.13103],[39.64933,40.17792],[39.77508,40.39844],[39.78502,40.46383],[39.80081,40.5158],[39.81892,40.52896],[39.83769,40.56752],[39.86737,40.63822],[39.93563,40.72933],[39.98511,40.97627],[39.94219,41.11598],[39.90087,41.27344],[39.93975,41.36553],[39.97765,41.62738],[39.9651,41.86233],[40.03399,42.09017],[40.01702,42.20924],[39.97752,42.28246],[39.91972,42.32696],[39.85726,42.38869],[39.80844,42.4678],[39.79778,42.54402],[39.79485,42.67739],[39.7334,42.97321],[39.71912,43.04709],[39.66647,43.01762],[39.60359,42.9817],[39.61651,42.89032],[39.56875,42.85656],[39.52948,42.75279],[39.42143,42.76231],[39.26228,42.81208],[39.23702,42.88358],[39.10607,43.17902],[39.02681,43.37423],[38.98225,43.57894],[38.86975,43.49371],[38.77019,43.36425],[38.61435,43.28578],[38.50686,43.37407],[38.49424,43.38]],"km":1804,"n":183},"istanbul-canakkale":{"noktalar":[[41.0344,28.8993],[41.05128,28.87119],[41.06177,28.80463],[41.06068,28.73661],[41.05413,28.67016],[41.10035,28.61187],[41.09276,28.51093],[41.05265,28.45202],[41.09662,28.3544],[41.12253,28.17231],[41.201,28.07084],[41.22673,27.88856],[41.30044,27.75612],[41.36324,27.62154],[41.419,27.49237],[41.45129,27.39108],[41.3974,27.38847],[41.40202,27.35639],[41.38432,27.3929],[41.32573,27.48297],[41.17725,27.53843],[41.06935,27.50559],[40.99454,27.51147],[40.96668,27.49873],[40.94448,27.43694],[40.95467,27.33952],[40.93279,27.20502],[40.87936,27.06812],[40.76562,27.00689],[40.69835,26.97772],[40.63387,26.944],[40.5822,26.86993],[40.52182,26.75266],[40.46749,26.67636],[40.41553,26.6158],[40.3516,26.6127],[40.27123,26.62361],[40.24334,26.56361],[40.14996,26.4277],[40.15529,26.41422]],"km":380,"n":40},"istanbul-canakkale-bursa":{"noktalar":[[41.0344,28.8993],[41.06349,28.884],[41.09139,28.91162],[41.09978,28.96629],[41.10556,29.01286],[41.14125,29.02837],[41.17265,29.05205],[41.19829,29.06432],[41.17984,29.05199],[41.15372,29.02564],[41.11024,29.02505],[41.08487,29.00794],[41.05985,29.0163],[41.00624,29.07639],[40.98452,29.1997],[40.95512,29.29382],[40.89079,29.37194],[40.81628,29.45022],[40.78363,29.51617],[40.71315,29.49829],[40.66546,29.42724],[40.54589,29.3498],[40.43486,29.23944],[40.3348,29.11805],[40.27628,29.04563],[40.2458,29.07144],[40.20603,29.08026],[40.19772,29.06248],[40.21701,29.00037],[40.26049,28.84391],[40.2651,28.6555],[40.20094,28.37386],[40.23382,28.28353],[40.2568,28.1197],[40.34749,27.9774],[40.34069,27.95713],[40.32999,27.88532],[40.25799,27.78298],[40.2714,27.6244],[40.27949,27.4202],[40.23228,27.25621],[40.26076,27.18509],[40.34607,26.98247],[40.37986,26.93051],[40.39845,26.85228],[40.3685,26.70842],[40.33424,26.6679],[40.18347,26.49808],[40.15455,26.4151],[40.15529,26.41422]],"km":481,"n":50},"istanbul-denizli":{"noktalar":[[41.0344,28.8993],[41.05687,28.88605],[41.09014,28.88895],[41.09156,28.9422],[41.10154,28.99094],[41.10789,29.01837],[41.14095,29.02828],[41.17282,29.04639],[41.185,29.04851],[41.18881,29.05061],[41.17312,29.05089],[41.15106,29.02994],[41.1106,29.02507],[41.09057,29.00562],[41.06582,29.0127],[41.02797,29.0457],[40.99763,29.11065],[40.98154,29.21429],[40.95756,29.28949],[40.9071,29.36137],[40.84111,29.41471],[40.8053,29.49318],[40.76311,29.51711],[40.70592,29.49301],[40.66577,29.43126],[40.59376,29.36726],[40.45909,29.29051],[40.40859,29.1416],[40.31532,29.0738],[40.27386,29.04917],[40.25006,29.06794],[40.21107,29.08282],[40.19571,29.06063],[40.20205,29.0356],[40.24387,28.96663],[40.2556,28.81274],[40.26056,28.67981],[40.25287,28.45769],[40.1145,28.27743],[39.94585,28.14984],[39.80968,28.04797],[39.73617,27.99169],[39.69047,27.95271],[39.64983,27.89222],[39.65175,27.87696],[39.65157,27.80147],[39.63658,27.72116],[39.5716,27.7011],[39.45738,27.63954],[39.28008,27.58637],[39.11431,27.69964],[38.97295,27.73057],[38.71022,27.64689],[38.4929,27.57917],[38.4561,27.43131],[38.36598,27.45227],[38.3082,27.41068],[38.18396,27.35279],[38.11639,27.41098],[38.05598,27.43555],[38.02007,27.45119],[37.89489,27.55737],[37.8696,27.7357],[37.8508,27.8203],[37.85957,27.84505],[37.86647,27.85203],[37.86209,27.86339],[37.85785,27.87185],[37.8439,27.87991],[37.81329,27.86441],[37.79057,28.05301],[37.82907,28.25511],[37.86727,28.47411],[37.91405,28.67303],[37.89528,28.92376],[37.86928,29.02819],[37.81105,29.06501],[37.78001,29.0824],[37.77654,29.08651]],"km":772,"n":79},"istanbul-eskisehir":{"noktalar":[[41.0344,28.8993],[41.07671,28.87431],[41.09328,28.93301],[41.10081,29.00221],[41.12914,29.0242],[41.17344,29.04939],[41.20019,29.06471],[41.1724,29.05287],[41.13824,29.0263],[41.09586,29.00581],[41.06623,29.01184],[41.00552,29.07105],[40.98154,29.21429],[40.94036,29.32417],[40.85194,29.41051],[40.79995,29.50533],[40.72139,29.50253],[40.66535,29.42676],[40.52267,29.34195],[40.41641,29.14777],[40.29268,29.03519],[40.25487,29.05907],[40.20897,29.08179],[40.19483,29.06932],[40.19819,29.19839],[40.17772,29.23671],[40.1605,29.33209],[40.11824,29.44523],[40.02538,29.62562],[39.95428,29.68343],[39.9258,29.75235],[39.89011,29.9201],[39.9067,30.03476],[39.88605,30.14068],[39.80289,30.42605],[39.77697,30.52083],[39.77668,30.52078]],"km":356,"n":37},"istanbul-malatya":{"noktalar":[[41.0344,28.8993],[41.0672,28.8813],[41.09291,28.91634],[41.09972,28.97282],[41.10769,29.01733],[41.14841,29.02853],[41.17412,29.05407],[41.19807,29.06583],[41.17242,29.05281],[41.14297,29.02823],[41.10554,29.01264],[41.07529,29.01482],[41.03415,29.04468],[40.99586,29.12367],[40.97575,29.24287],[40.93281,29.34035],[40.85089,29.41109],[40.80398,29.4967],[40.77153,29.56225],[40.77835,29.64719],[40.77249,29.76958],[40.76679,29.86507],[40.78597,29.95107],[40.76707,30.01853],[40.72239,30.10482],[40.68167,30.25285],[40.71247,30.33512],[40.73086,30.38248],[40.72017,30.46682],[40.73787,30.64661],[40.77059,30.77938],[40.80787,30.88271],[40.84499,31.00614],[40.8041,31.16631],[40.78241,31.31303],[40.75852,31.44562],[40.73102,31.51788],[40.73607,31.56723],[40.73843,31.56536],[40.76631,31.64061],[40.76922,31.73818],[40.73934,31.82839],[40.7595,31.97386],[40.73998,32.13307],[40.69748,32.22232],[40.6377,32.23272],[40.59676,32.28664],[40.54861,32.30065],[40.4926,32.30521],[40.44205,32.39348],[40.38263,32.44693],[40.34847,32.4845],[40.28739,32.47993],[40.23114,32.52299],[40.19066,32.59214],[40.12006,32.60324],[40.03681,32.59969],[40.01575,32.69136],[40.02597,32.83496],[39.984,32.95362],[39.92335,32.99977],[39.96782,33.10918],[39.91806,33.22529],[39.94803,33.299],[39.93274,33.39977],[39.86355,33.48224],[39.86637,33.63045],[39.94187,33.8025],[39.89413,33.99973],[39.79739,34.19134],[39.66216,34.56265],[39.7729,34.74786],[39.82983,34.85532],[39.81197,35.1578],[39.67208,35.52177],[39.66144,35.85774],[39.70356,35.87819],[39.78568,35.97712],[39.80726,36.02586],[39.80875,36.05472],[39.80873,36.0705],[39.81617,36.10049],[39.81347,36.11064],[39.80158,36.16861],[39.80271,36.21971],[39.82115,36.31901],[39.82841,36.38067],[39.83575,36.44259],[39.84841,36.51756],[39.86458,36.57651],[39.84649,36.69338],[39.73935,36.80399],[39.72759,36.97541],[39.74386,37.00976],[39.73967,37.01631],[39.67463,37.0108],[39.6228,37.01632],[39.56544,37.02795],[39.45183,37.02453],[39.36908,37.11955],[39.24097,37.17483],[39.18591,37.32142],[39.14181,37.49702],[39.11478,37.59009],[39.08505,37.66183],[39.0481,37.71161],[38.99162,37.79347],[38.96843,37.88121],[38.90322,37.88432],[38.85331,37.90983],[38.80981,37.95088],[38.75143,37.9771],[38.72991,38.03814],[38.69957,38.11277],[38.65369,38.15362],[38.56518,38.23393],[38.48291,38.21797],[38.36593,38.22872],[38.35104,38.29968],[38.35514,38.30951]],"km":1188,"n":120},"istanbul-hatay":{"noktalar":[[41.0344,28.8993],[41.05618,28.88605],[41.08976,28.88755],[41.09165,28.93955],[41.10073,28.98614],[41.10704,29.01534],[41.13753,29.02584],[41.17302,29.04202],[41.18312,29.05044],[41.19374,29.05832],[41.17386,29.05392],[41.15434,29.02529],[41.11995,29.024],[41.09572,29.00574],[41.07278,29.01594],[41.05192,29.02759],[41.00822,29.08161],[40.99031,29.18276],[40.97022,29.26622],[40.93177,29.34299],[40.86973,29.39639],[40.80903,29.4653],[40.7889,29.51836],[40.7711,29.58153],[40.77824,29.64642],[40.77845,29.73917],[40.7692,29.8331],[40.77905,29.8866],[40.78509,29.96251],[40.76865,30.01189],[40.72712,30.07242],[40.70408,30.19549],[40.69338,30.28555],[40.71093,30.35024],[40.73446,30.38764],[40.71806,30.405],[40.71572,30.54869],[40.74882,30.68336],[40.77279,30.78336],[40.80666,30.85944],[40.83983,30.96404],[40.81664,31.08093],[40.79253,31.20648],[40.78183,31.31623],[40.75745,31.42691],[40.72347,31.4685],[40.73861,31.55336],[40.73583,31.5709],[40.73622,31.56636],[40.76434,31.61905],[40.77752,31.69943],[40.75891,31.76994],[40.74159,31.84598],[40.7537,31.96082],[40.75115,32.07978],[40.7316,32.20194],[40.67831,32.22443],[40.63211,32.23773],[40.60118,32.27936],[40.56477,32.31068],[40.51784,32.28661],[40.48798,32.32537],[40.44214,32.39947],[40.39037,32.44433],[40.3623,32.46413],[40.31889,32.48904],[40.27607,32.48512],[40.23114,32.52299],[40.20148,32.58625],[40.16028,32.59525],[40.08875,32.61028],[40.02356,32.61939],[39.9355,32.62521],[39.88744,32.61126],[39.8617,32.62433],[39.75023,32.43099],[39.60234,32.17872],[39.57248,32.10987],[39.5483,31.72775],[39.43265,31.53998],[39.24231,31.39579],[39.06987,31.10618],[39.00287,30.97596],[38.92421,30.90532],[38.91602,30.86799],[38.86924,30.78854],[38.80563,30.65522],[38.75503,30.56093],[38.73392,30.57461],[38.67609,30.73544],[38.61488,30.85096],[38.59217,31.04411],[38.53646,31.24112],[38.45076,31.31284],[38.37395,31.43533],[38.32508,31.55843],[38.29784,31.70868],[38.28888,31.81368],[38.28546,31.94064],[38.23078,32.20961],[38.20329,32.39874],[38.10701,32.49428],[37.9606,32.51432],[37.89664,32.53753],[37.8518,32.67803],[37.74223,33.02747],[37.71311,33.4079],[37.71509,33.57895],[37.52517,34.02347],[37.60124,34.20054],[37.6348,34.41633],[37.6198,34.58723],[37.65544,34.72059],[37.54422,34.78571],[37.4663,34.86838],[37.40374,34.86553],[37.35649,34.82572],[37.30998,34.78922],[37.25811,34.79978],[37.20272,34.81757],[37.15861,34.84139],[37.12374,34.89097],[37.08239,34.94693],[37.01723,34.9624],[37.02411,35.10065],[37.02965,35.2115],[37.02474,35.32238],[37.00161,35.34082],[37.00433,35.31591],[37.02201,35.34424],[37.02019,35.4892],[37.00742,35.68191],[36.98222,35.77881],[36.99441,35.91287],[36.9675,36.03673],[36.95701,36.15014],[36.89522,36.23267],[36.82727,36.24278],[36.73927,36.22323],[36.64396,36.22754],[36.56315,36.18736],[36.51766,36.16547],[36.49009,36.19819],[36.47947,36.23442],[36.48184,36.26767],[36.47547,36.28867],[36.45805,36.27066],[36.40969,36.26622],[36.31686,36.20099],[36.22312,36.16262],[36.2025,36.16058]],"km":1499,"n":151},"istanbul-mugla":{"noktalar":[[41.0344,28.8993],[41.06036,28.88556],[41.09085,28.90202],[41.09696,28.95312],[41.09869,29.0068],[41.12344,29.02376],[41.15684,29.02646],[41.18145,29.05103],[41.19432,29.05927],[41.1724,29.05287],[41.15084,29.02988],[41.10929,29.02436],[41.08516,29.00772],[41.06475,29.01463],[41.00882,29.0612],[40.99285,29.16975],[40.97109,29.26274],[40.92841,29.34778],[40.85194,29.41051],[40.80562,29.49067],[40.75598,29.51594],[40.69833,29.48675],[40.65095,29.4154],[40.54002,29.34629],[40.43545,29.24124],[40.35425,29.13128],[40.28564,29.03485],[40.25487,29.05907],[40.21445,29.08471],[40.19541,29.06252],[40.20392,29.03261],[40.2542,28.95407],[40.24357,28.77779],[40.27495,28.57704],[40.19286,28.34988],[40.01519,28.2005],[39.86041,28.08816],[39.75475,28.00074],[39.6961,27.96434],[39.65015,27.8924],[39.65299,27.87288],[39.64607,27.79376],[39.63845,27.71148],[39.53837,27.67565],[39.37109,27.62685],[39.20033,27.65811],[39.01351,27.74796],[38.76299,27.66008],[38.51449,27.60194],[38.45664,27.43144],[38.36279,27.4491],[38.28314,27.40203],[38.16891,27.35921],[38.08533,27.40473],[38.03177,27.44715],[37.96397,27.50698],[37.87619,27.68847],[37.84677,27.81708],[37.8572,27.84407],[37.86646,27.85205],[37.86198,27.86434],[37.8559,27.87209],[37.833,27.84474],[37.76703,27.83417],[37.7145,27.92861],[37.67871,28.01173],[37.60894,28.05952],[37.52377,28.07329],[37.49204,28.11681],[37.44404,28.13815],[37.38993,28.14445],[37.30588,28.17252],[37.2437,28.27878],[37.21992,28.34544],[37.21538,28.36353]],"km":738,"n":75},"istanbul-balikesir":{"noktalar":[[41.0344,28.8993],[41.0672,28.8813],[41.09291,28.91634],[41.09972,28.97282],[41.10769,29.01733],[41.14841,29.02853],[41.17412,29.05407],[41.19807,29.06583],[41.17242,29.05281],[41.14297,29.02823],[41.10554,29.01264],[41.07529,29.01482],[41.03415,29.04468],[40.99586,29.12367],[40.97575,29.24287],[40.93281,29.34035],[40.85089,29.41109],[40.80398,29.4967],[40.73448,29.5111],[40.67326,29.45591],[40.61135,29.37375],[40.45817,29.28447],[40.38579,29.1371],[40.28785,29.02913],[40.25474,29.05911],[40.21101,29.08261],[40.19528,29.06023],[40.21326,29.00906],[40.2648,28.90434],[40.25937,28.68443],[40.22051,28.39998],[40.03692,28.21699],[39.85733,28.08816],[39.73902,27.99627],[39.6799,27.93604],[39.64784,27.88201],[39.64821,27.88263]],"km":351,"n":37},"istanbul-edirne":{"noktalar":[[41.0344,28.8993],[41.05253,28.86835],[41.06375,28.79637],[41.05555,28.72771],[41.05976,28.65633],[41.10677,28.57603],[41.07221,28.50733],[41.05855,28.41434],[41.10961,28.26825],[41.17633,28.11597],[41.21141,27.98055],[41.27117,27.80554],[41.33972,27.66985],[41.40816,27.51997],[41.4501,27.39638],[41.40567,27.38694],[41.40263,27.36339],[41.39405,27.38174],[41.43049,27.38502],[41.46637,27.33397],[41.50242,27.17085],[41.55901,27.04161],[41.61862,26.85244],[41.65928,26.70109],[41.68995,26.59143],[41.67714,26.55554],[41.67702,26.55571]],"km":251,"n":27},"istanbul-bolu":{"noktalar":[[41.0344,28.8993],[41.07835,28.87287],[41.09154,28.94127],[41.09813,29.0071],[41.13991,29.02773],[41.1747,29.05456],[41.19046,29.05197],[41.17306,29.04237],[41.11238,29.02488],[41.08011,29.01163],[41.03318,29.04503],[40.99455,29.15485],[40.96062,29.28204],[40.88376,29.37764],[40.80548,29.48802],[40.77066,29.5648],[40.77992,29.66826],[40.76765,29.82083],[40.78294,29.92823],[40.77059,30.00146],[40.72132,30.10694],[40.68816,30.27783],[40.70997,30.38467],[40.71706,30.39928],[40.72709,30.63069],[40.7717,30.78189],[40.81961,30.91537],[40.83441,31.0428],[40.83944,31.16726],[40.78529,31.26753],[40.75803,31.42456],[40.72946,31.51373],[40.73583,31.5709],[40.73618,31.57714]],"km":322,"n":34},"istanbul-sakarya":{"noktalar":[[41.0344,28.8993],[41.08545,28.87864],[41.09936,28.95934],[41.11009,29.02516],[41.17282,29.04639],[41.19704,29.06215],[41.17359,29.04132],[41.1079,29.01779],[41.06582,29.0127],[41.00951,29.08754],[40.97373,29.25144],[40.89137,29.3716],[40.8053,29.49318],[40.778,29.59676],[40.77785,29.73497],[40.77444,29.87281],[40.77121,29.98492],[40.72299,30.10308],[40.69698,30.28991],[40.73457,30.38449],[40.73448,30.38778]],"km":198,"n":21},"ankara-izmir":{"noktalar":[[39.92086,32.8541],[39.90876,32.78634],[39.9046,32.69517],[39.85521,32.60774],[39.75803,32.45422],[39.62937,32.19529],[39.57477,32.14048],[39.57586,31.93979],[39.52587,31.62457],[39.43357,31.52827],[39.2396,31.38461],[39.07896,31.12084],[39.01549,30.99766],[38.95379,30.91014],[38.92684,30.88731],[38.90861,30.85149],[38.85961,30.7719],[38.80563,30.65522],[38.7588,30.56893],[38.76053,30.54925],[38.78267,30.48052],[38.7956,30.34413],[38.79865,30.12803],[38.82106,29.99878],[38.83875,29.91154],[38.75348,29.78],[38.68108,29.63343],[38.67696,29.52018],[38.68228,29.40801],[38.67486,29.36698],[38.67475,29.23727],[38.7974,29.23453],[38.83095,29.26576],[38.87004,29.28361],[38.91491,29.30153],[38.9351,29.28695],[38.99115,29.176],[39.05494,29.08609],[39.07899,29.01307],[39.09333,28.97912],[39.10811,28.9192],[39.12839,28.82911],[39.16286,28.65623],[39.1734,28.57683],[39.18081,28.54778],[39.19322,28.49859],[39.2045,28.44956],[39.22095,28.41476],[39.22076,28.38677],[39.23517,28.35646],[39.25429,28.33416],[39.25746,28.27321],[39.26725,28.25679],[39.28734,28.21971],[39.29862,28.19279],[39.36721,28.1444],[39.37946,28.13159],[39.42048,28.09037],[39.45388,28.06308],[39.51042,28.02004],[39.58784,27.92759],[39.63927,27.88338],[39.64802,27.88139],[39.66025,27.83984],[39.64521,27.75804],[39.63864,27.71227],[39.56282,27.70191],[39.46827,27.64955],[39.34019,27.62518],[39.20155,27.65565],[39.05277,27.73096],[38.92816,27.70211],[38.69542,27.64211],[38.51411,27.60153],[38.46262,27.43747],[38.45902,27.31086],[38.43851,27.2159],[38.42525,27.20794],[38.42622,27.17978],[38.42348,27.14322],[38.41909,27.13999]],"km":800,"n":81},"ankara-antalya":{"noktalar":[[39.92086,32.8541],[39.91354,32.81374],[39.86083,32.81],[39.83432,32.79684],[39.80579,32.79475],[39.78931,32.74249],[39.71302,32.7326],[39.61013,32.79018],[39.52701,32.89804],[39.4046,32.96609],[39.29714,33.07177],[39.20915,33.14052],[39.11033,33.08562],[39.01143,33.02659],[38.95139,33.00213],[38.84168,32.95475],[38.6873,32.92177],[38.6439,32.92722],[38.51214,32.85558],[38.21696,32.7494],[38.00323,32.60817],[37.89111,32.50211],[37.87398,32.48613],[37.87993,32.4526],[37.87333,32.4223],[37.88283,32.35219],[37.88136,32.28824],[37.90149,32.19651],[37.86668,32.04151],[37.90907,31.96251],[37.86855,31.88625],[37.79412,31.80322],[37.70649,31.73481],[37.675,31.71943],[37.62779,31.59595],[37.562,31.52509],[37.49824,31.49184],[37.39771,31.49591],[37.35238,31.43767],[37.2613,31.46427],[37.20284,31.47769],[37.14393,31.49225],[37.09749,31.45968],[37.04827,31.4026],[37.02829,31.39616],[37.00938,31.38091],[36.97275,31.35932],[36.9429,31.26217],[36.91362,31.23223],[36.91148,31.1524],[36.91907,31.05104],[36.94446,30.89001],[36.90289,30.76542],[36.89489,30.71498],[36.8969,30.71328]],"km":534,"n":55},"ankara-samsun":{"noktalar":[[39.92086,32.8541],[39.92783,32.86752],[39.93471,32.89762],[39.92453,32.92281],[39.93715,33.02274],[39.96412,33.0986],[39.9623,33.17619],[39.91714,33.24858],[39.94681,33.29709],[39.92699,33.34567],[39.93067,33.42327],[39.86367,33.47268],[39.84661,33.516],[39.86571,33.52949],[39.86708,33.63448],[39.90934,33.71663],[39.93604,33.91697],[39.97172,34.05706],[40.12005,34.16313],[40.15728,34.35265],[40.17729,34.42011],[40.29122,34.65183],[40.38922,34.72135],[40.4731,34.88051],[40.55352,34.93116],[40.58332,35.03758],[40.54633,35.18912],[40.55122,35.37352],[40.57883,35.67887],[40.59582,35.80449],[40.64937,35.81786],[40.65052,35.83331],[40.67014,35.83367],[40.72241,35.79001],[40.80801,35.6555],[40.85342,35.6232],[40.95403,35.66521],[40.9973,35.77858],[41.03528,35.90554],[41.0696,36.03124],[41.11712,36.12876],[41.17359,36.11458],[41.24063,36.16652],[41.29159,36.21344],[41.28607,36.29236],[41.2882,36.32291],[41.28668,36.32995]],"km":457,"n":47},"ankara-trabzon":{"noktalar":[[39.92086,32.8541],[39.92874,32.87019],[39.93234,32.90747],[39.91374,32.94646],[39.95042,33.05461],[39.96739,33.13106],[39.9193,33.22296],[39.93055,33.27889],[39.93648,33.33146],[39.93563,33.42072],[39.86372,33.47173],[39.84645,33.51411],[39.872,33.56745],[39.87976,33.66631],[39.94207,33.80109],[39.9246,34.00886],[40.06697,34.10173],[40.15563,34.33992],[40.16608,34.39002],[40.26197,34.62933],[40.38669,34.72172],[40.48421,34.89277],[40.56259,34.94902],[40.60411,35.07071],[40.54082,35.24964],[40.56957,35.47731],[40.58231,35.79168],[40.62943,35.81694],[40.64989,35.83491],[40.66613,35.834],[40.72069,35.79303],[40.81396,35.64541],[40.87277,35.60821],[40.97195,35.67527],[41.00229,35.83507],[41.0578,35.96854],[41.09129,36.08938],[41.15035,36.1123],[41.23191,36.15097],[41.28787,36.20246],[41.28784,36.29139],[41.28849,36.32479],[41.26991,36.36178],[41.22386,36.44441],[41.22627,36.58917],[41.20382,36.72205],[41.21556,36.92896],[41.19207,37.02141],[41.13865,37.19729],[41.11587,37.31388],[41.08153,37.41767],[41.05567,37.47754],[41.02154,37.53131],[41.01653,37.61034],[40.97643,37.72876],[40.9995,37.82222],[40.9892,37.87546],[40.97553,37.92092],[40.97616,37.9966],[40.95772,38.11277],[40.9376,38.20442],[40.93535,38.2997],[40.91637,38.38153],[40.91161,38.43099],[40.9155,38.49846],[40.93251,38.56651],[40.96701,38.61639],[40.94871,38.67883],[40.98364,38.7711],[41.01316,38.87763],[41.03842,38.99463],[41.07383,39.15582],[41.04746,39.25274],[41.08918,39.38792],[41.09009,39.48768],[41.03229,39.56066],[41.01119,39.61474],[41.0038,39.69729],[41.00347,39.71753],[41.0015,39.71766]],"km":784,"n":80},"ankara-adana":{"noktalar":[[39.92086,32.8541],[39.913,32.81314],[39.87575,32.81123],[39.84656,32.8101],[39.81549,32.79803],[39.78818,32.77619],[39.77371,32.74357],[39.69286,32.73231],[39.6036,32.80329],[39.52932,32.89644],[39.42618,32.95658],[39.3171,33.04563],[39.23837,33.15395],[39.18138,33.27364],[39.12196,33.42641],[39.04666,33.43854],[38.94527,33.53437],[38.81143,33.60738],[38.52359,33.84278],[38.39611,33.98581],[38.37061,33.98267],[38.35894,33.98033],[38.28511,33.98786],[38.18235,34.04275],[38.01699,34.0507],[37.64341,34.35702],[37.62987,34.46937],[37.6171,34.5991],[37.65145,34.68589],[37.58259,34.74976],[37.52708,34.81534],[37.46458,34.87198],[37.40704,34.8811],[37.3821,34.84604],[37.3474,34.81443],[37.31126,34.78947],[37.27578,34.79425],[37.22574,34.79844],[37.19577,34.83537],[37.1619,34.84647],[37.13724,34.86213],[37.10399,34.92113],[37.07141,34.94106],[37.02785,34.95896],[37.02005,35.02722],[37.03698,35.13676],[37.02894,35.22041],[37.03255,35.30129],[37.01552,35.3397],[36.99024,35.3381],[36.99139,35.3308]],"km":494,"n":51},"ankara-gaziantep":{"noktalar":[[39.92086,32.8541],[39.91331,32.8132],[39.86695,32.81029],[39.8447,32.80838],[39.81332,32.79775],[39.78648,32.76476],[39.75847,32.73762],[39.67202,32.74486],[39.58885,32.83549],[39.5003,32.93715],[39.38436,32.98378],[39.28887,33.08368],[39.19712,33.19413],[39.18376,33.33609],[39.09483,33.42018],[38.97631,33.49563],[38.90208,33.58099],[38.58967,33.78539],[38.41324,33.97314],[38.3698,33.98873],[38.36612,33.98093],[38.30545,33.98255],[38.19432,34.04747],[38.02369,34.04694],[37.64234,34.35696],[37.62985,34.46555],[37.6171,34.5991],[37.65213,34.69068],[37.569,34.75434],[37.52004,34.81732],[37.45969,34.8786],[37.40341,34.87122],[37.37371,34.83851],[37.33642,34.80591],[37.30006,34.78524],[37.26076,34.79947],[37.2159,34.80664],[37.18756,34.86747],[37.14584,34.84163],[37.12212,34.89369],[37.08994,34.94236],[37.0436,34.94433],[37.00989,34.9832],[37.02772,35.11194],[37.03081,35.1929],[37.03102,35.28355],[37.01981,35.34157],[36.9965,35.34213],[37.00326,35.31323],[37.00937,35.3375],[37.0293,35.39403],[37.00561,35.51735],[37.00715,35.67705],[36.98831,35.75123],[36.98292,35.82908],[37.00782,35.95687],[37.03966,36.09187],[37.08956,36.14933],[37.11485,36.27901],[37.1731,36.36953],[37.19535,36.41919],[37.18518,36.50875],[37.18958,36.6044],[37.16476,36.68801],[37.19042,36.75548],[37.225,36.87721],[37.27575,37.10402],[37.2665,37.2184],[37.20904,37.26836],[37.15481,37.28726],[37.08966,37.34972],[37.06613,37.381],[37.06552,37.38338]],"km":718,"n":73},"ankara-diyarbakir":{"noktalar":[[39.92086,32.8541],[39.93346,32.8802],[39.92894,32.91768],[39.93476,33.01867],[39.96992,33.11501],[39.9193,33.22296],[39.94525,33.29583],[39.92413,33.37616],[39.8838,33.43534],[39.84782,33.51255],[39.872,33.56745],[39.89124,33.67523],[39.93874,33.89885],[39.88225,34.02839],[39.76442,34.22066],[39.66068,34.55736],[39.76087,34.73873],[39.8278,34.8319],[39.84231,34.98921],[39.78191,35.23991],[39.68039,35.78029],[39.66905,35.86727],[39.713,35.88685],[39.78943,36.00219],[39.80708,36.02627],[39.80852,36.05417],[39.8084,36.06938],[39.81626,36.09822],[39.8129,36.10487],[39.8124,36.12189],[39.79646,36.17775],[39.81545,36.25353],[39.81965,36.32675],[39.82868,36.38173],[39.83572,36.44217],[39.85079,36.50753],[39.8576,36.55494],[39.87013,36.61609],[39.80093,36.72678],[39.73014,36.87998],[39.73503,36.99295],[39.74997,37.01865],[39.73672,37.01564],[39.67333,37.01041],[39.62537,37.01712],[39.57725,37.02742],[39.47208,37.01346],[39.39973,37.08124],[39.28881,37.16067],[39.20968,37.20217],[39.21322,37.40979],[39.14305,37.5258],[39.10754,37.59906],[39.08534,37.66136],[39.05346,37.70527],[39.00116,37.78146],[38.98934,37.85523],[38.93045,37.88059],[38.87264,37.89783],[38.83896,37.91028],[38.79799,37.9593],[38.74686,37.98195],[38.729,38.0409],[38.70031,38.11178],[38.66391,38.15384],[38.59451,38.19122],[38.50083,38.23309],[38.42659,38.22341],[38.33729,38.24261],[38.35507,38.30589],[38.34884,38.36362],[38.33206,38.48508],[38.38715,38.65715],[38.45659,38.85569],[38.46747,39.04832],[38.42471,39.10579],[38.41452,39.21477],[38.44192,39.27265],[38.4691,39.28547],[38.48442,39.33495],[38.50556,39.39681],[38.52474,39.49519],[38.46602,39.59948],[38.43223,39.63574],[38.40209,39.66394],[38.36714,39.6787],[38.35071,39.68663],[38.3155,39.72341],[38.1827,39.86702],[38.0695,40.05073],[37.96514,40.17711],[37.91522,40.23379],[37.9143,40.23065]],"km":913,"n":93},"ankara-erzurum":{"noktalar":[[39.92086,32.8541],[39.93152,32.87628],[39.93098,32.91314],[39.91444,32.98031],[39.96067,33.09071],[39.96113,33.17825],[39.9186,33.25652],[39.93978,33.31654],[39.94098,33.40993],[39.86446,33.4597],[39.84645,33.51411],[39.87346,33.578],[39.89124,33.67523],[39.94121,33.89089],[39.8932,34.00363],[39.7996,34.15109],[39.67256,34.481],[39.70519,34.68219],[39.80676,34.76947],[39.84001,34.86619],[39.81212,35.15172],[39.70104,35.3623],[39.65995,35.80795],[39.67041,35.869],[39.713,35.88685],[39.78676,35.98787],[39.80788,36.0233],[39.80396,36.04443],[39.80994,36.06538],[39.81165,36.07507],[39.81582,36.10128],[39.81336,36.11012],[39.80699,36.14654],[39.79565,36.18855],[39.81821,36.26464],[39.81963,36.32744],[39.82868,36.38173],[39.83499,36.42757],[39.85113,36.5039],[39.8567,36.5472],[39.86852,36.58342],[39.82795,36.70537],[39.73783,36.8051],[39.72468,36.96474],[39.7392,37.00211],[39.74676,37.01788],[39.74997,37.02968],[39.77755,37.07326],[39.81441,37.13643],[39.82914,37.25519],[39.84967,37.36912],[39.86287,37.47301],[39.86403,37.61066],[39.8777,37.69986],[39.84882,37.84744],[39.87345,37.92915],[39.88567,37.98004],[39.88201,38.06647],[39.87607,38.16512],[39.84744,38.29224],[39.85213,38.38158],[39.87545,38.4266],[39.91729,38.48107],[39.92975,38.56657],[39.95001,38.62886],[39.93874,38.73787],[39.89971,38.82908],[39.87056,39.05631],[39.87609,39.13182],[39.87837,39.23584],[39.81181,39.3584],[39.74699,39.48618],[39.73159,39.53929],[39.65665,39.72787],[39.59761,39.86022],[39.57196,39.96129],[39.55235,40.07006],[39.59969,40.1856],[39.77306,40.32125],[39.77317,40.44168],[39.79665,40.49881],[39.80102,40.53063],[39.82925,40.54787],[39.85626,40.59016],[39.90061,40.65551],[39.94327,40.766],[39.97687,41.0255],[39.92271,41.18919],[39.89999,41.26998]],"km":875,"n":89},"ankara-konya":{"noktalar":[[39.92086,32.8541],[39.91607,32.83064],[39.89777,32.81348],[39.86143,32.81011],[39.84687,32.81027],[39.82758,32.79583],[39.8068,32.79564],[39.7865,32.76382],[39.77763,32.74418],[39.72228,32.732],[39.65694,32.74408],[39.59709,32.82556],[39.53885,32.89293],[39.46525,32.95472],[39.37993,32.98935],[39.30407,33.05656],[39.24086,33.13839],[39.19156,33.21387],[39.1879,33.32106],[39.11298,33.42183],[39.07337,33.41475],[38.97443,33.49826],[38.92795,33.54875],[38.77552,33.64485],[38.56877,33.80519],[38.43355,33.9493],[38.38009,33.98982],[38.37042,33.98388],[38.36277,33.98037],[38.34971,33.96102],[38.2914,33.76035],[38.25294,33.55263],[38.24756,33.44892],[38.13873,33.17096],[38.02365,32.86753],[37.96822,32.67406],[37.95323,32.57519],[37.91017,32.51561],[37.87951,32.49498],[37.87456,32.49304]],"km":381,"n":40},"ankara-malatya":{"noktalar":[[39.92086,32.8541],[39.93351,32.88032],[39.92889,32.9177],[39.93686,33.02224],[39.96986,33.11714],[39.91741,33.2266],[39.94654,33.29686],[39.92599,33.38473],[39.8723,33.44581],[39.87332,33.58392],[39.89932,33.68901],[39.93711,33.92073],[39.87489,34.06672],[39.73282,34.26492],[39.69233,34.60031],[39.77871,34.74965],[39.82823,34.84656],[39.81916,35.10063],[39.70382,35.35137],[39.65481,35.81917],[39.67651,35.8713],[39.72367,35.90948],[39.79678,36.00781],[39.80402,36.031],[39.80911,36.05588],[39.80895,36.07084],[39.81622,36.10033],[39.81274,36.10619],[39.80707,36.14611],[39.79563,36.18954],[39.81747,36.29857],[39.82049,36.33235],[39.83461,36.39702],[39.83705,36.45088],[39.84819,36.52284],[39.86641,36.57903],[39.84649,36.69338],[39.76123,36.76478],[39.72424,36.96263],[39.73956,37.00318],[39.74655,37.01802],[39.6984,37.00805],[39.66033,37.01022],[39.61213,37.02476],[39.52135,37.00946],[39.43744,37.0418],[39.36346,37.1251],[39.24608,37.17396],[39.19232,37.30133],[39.15443,37.48204],[39.12898,37.55608],[39.08725,37.63604],[39.0717,37.68703],[39.03221,37.74679],[38.99086,37.81951],[38.96292,37.895],[38.90067,37.88543],[38.85433,37.9091],[38.81872,37.9383],[38.76273,37.97154],[38.73752,38.00844],[38.71133,38.08524],[38.68735,38.13325],[38.62533,38.16421],[38.54344,38.25066],[38.46711,38.22664],[38.35439,38.23146],[38.35105,38.29941],[38.35514,38.30951]],"km":678,"n":69},"izmir-antalya":{"noktalar":[[38.41909,27.13999],[38.39346,27.14203],[38.38167,27.18272],[38.363,27.20472],[38.27747,27.22401],[38.10414,27.35837],[38.00103,27.49769],[37.86978,27.64614],[37.85169,27.80592],[37.85425,27.83275],[37.86881,27.8504],[37.86182,27.85772],[37.86093,27.86735],[37.84932,27.86481],[37.81645,27.86438],[37.791,28.00463],[37.83176,28.22529],[37.86599,28.45659],[37.89567,28.65121],[37.89486,28.9149],[37.86899,29.02843],[37.80968,29.06685],[37.77918,29.08564],[37.7567,29.10654],[37.7307,29.15248],[37.72533,29.20495],[37.68018,29.22424],[37.62232,29.23432],[37.56342,29.28195],[37.444,29.3451],[37.36262,29.48183],[37.27403,29.56277],[37.17501,29.65321],[37.11248,29.72232],[37.04219,29.79052],[37.03829,29.87965],[37.0326,30.00125],[37.0404,30.08477],[37.05143,30.15431],[37.0508,30.22973],[37.00758,30.30644],[37.0229,30.37457],[37.03642,30.43215],[37.01902,30.49342],[36.9846,30.56496],[36.95319,30.6208],[36.92497,30.66691],[36.90107,30.70156],[36.8969,30.71328]],"km":471,"n":49},"izmir-adana":{"noktalar":[[38.41909,27.13999],[38.39871,27.13135],[38.38931,27.16869],[38.37659,27.19012],[38.36311,27.20487],[38.30572,27.22516],[38.19467,27.30397],[38.05679,27.42345],[37.99866,27.50013],[37.88096,27.59114],[37.8682,27.72571],[37.84544,27.81445],[37.85384,27.83403],[37.86639,27.84766],[37.86553,27.85144],[37.86342,27.86135],[37.86071,27.86823],[37.85146,27.86978],[37.83801,27.88584],[37.81055,27.87361],[37.79189,28.01095],[37.81149,28.1762],[37.834,28.33996],[37.87703,28.51009],[37.90974,28.66756],[37.90894,28.8634],[37.86472,29.00912],[37.84989,29.03504],[37.80633,29.07158],[37.77621,29.09455],[37.78248,29.09565],[37.818,29.12057],[37.80401,29.223],[37.81157,29.30294],[37.83487,29.41595],[37.88867,29.43416],[37.95714,29.48902],[38.06627,29.59958],[38.17885,29.65102],[38.29369,29.72448],[38.33994,29.7411],[38.44655,29.7005],[38.50294,29.67738],[38.54351,29.62686],[38.56344,29.63619],[38.58998,29.64548],[38.61306,29.65237],[38.62544,29.66446],[38.65413,29.66684],[38.72998,29.73981],[38.81862,29.86223],[38.84058,29.95596],[38.79198,30.07144],[38.7944,30.24155],[38.79483,30.44104],[38.76723,30.52885],[38.74775,30.56574],[38.71937,30.59032],[38.67261,30.74419],[38.61843,30.8456],[38.59837,31.01929],[38.56475,31.17728],[38.49621,31.27081],[38.4415,31.32765],[38.37455,31.43431],[38.34271,31.51423],[38.30393,31.63505],[38.29157,31.7371],[38.28502,31.85865],[38.28619,31.93785],[38.2572,32.15623],[38.21426,32.33735],[38.18655,32.45745],[38.07086,32.51185],[37.96202,32.5145],[37.9089,32.52663],[37.86878,32.55306],[37.82742,32.81692],[37.73492,33.07699],[37.7131,33.40765],[37.7129,33.56276],[37.58996,33.92607],[37.52725,34.06569],[37.61708,34.25417],[37.6348,34.41633],[37.63237,34.5438],[37.64839,34.65675],[37.6029,34.74202],[37.52968,34.81235],[37.46556,34.86994],[37.40557,34.87939],[37.3771,34.84353],[37.33817,34.80745],[37.29953,34.7852],[37.25688,34.79987],[37.21249,34.80665],[37.18118,34.86672],[37.13783,34.84454],[37.11803,34.90579],[37.08087,34.9462],[37.02973,34.95756],[37.02057,35.03388],[37.03899,35.14996],[37.03228,35.2432],[37.02348,35.32672],[37.00869,35.3381],[36.99139,35.3308]],"km":1053,"n":107},"izmir-trabzon":{"noktalar":[[38.41909,27.13999],[38.42536,27.18974],[38.43483,27.21224],[38.46418,27.31845],[38.45551,27.48992],[38.645,27.65904],[38.89737,27.66754],[39.0726,27.71693],[39.24889,27.58222],[39.43771,27.63205],[39.55978,27.70114],[39.63902,27.73942],[39.65718,27.84889],[39.64741,27.88842],[39.68805,27.95177],[39.73291,27.97726],[39.77598,28.01564],[39.91689,28.12846],[40.09272,28.27534],[40.23543,28.4213],[40.26365,28.6665],[40.25556,28.81409],[40.25156,28.95589],[40.21224,29.01971],[40.19528,29.06023],[40.20559,29.08004],[40.24127,29.08796],[40.2752,29.05385],[40.31501,29.07173],[40.40633,29.14046],[40.46151,29.30132],[40.61307,29.37689],[40.66594,29.4429],[40.71709,29.50114],[40.77828,29.51809],[40.80537,29.4863],[40.85137,29.41105],[40.92283,29.35112],[40.97057,29.26565],[40.9885,29.1938],[41.00925,29.0846],[41.05376,29.02561],[41.07651,29.0144],[41.10219,29.01031],[41.13027,29.02441],[41.17377,29.03981],[41.1831,29.05037],[41.19122,29.05341],[41.17296,29.0513],[41.14919,29.02893],[41.10946,29.02457],[41.08592,29.00721],[41.0663,29.01239],[41.01324,29.05865],[40.99475,29.15017],[40.9754,29.24611],[40.93722,29.33018],[40.87368,29.39223],[40.80841,29.46782],[40.78499,29.52357],[40.778,29.59676],[40.77993,29.6657],[40.77098,29.77645],[40.76549,29.85928],[40.78257,29.93707],[40.77019,29.98801],[40.73643,30.04972],[40.70994,30.1419],[40.68716,30.27505],[40.71184,30.34379],[40.73421,30.38609],[40.71821,30.42415],[40.71887,30.58847],[40.75394,30.72528],[40.78393,30.80858],[40.81755,30.91267],[40.84503,31.01363],[40.8055,31.15491],[40.79074,31.28716],[40.76133,31.4096],[40.72443,31.45693],[40.7388,31.55095],[40.73576,31.57117],[40.74377,31.56279],[40.76549,31.63578],[40.77889,31.72116],[40.74088,31.78698],[40.75378,31.91182],[40.76681,32.00905],[40.81363,32.03534],[40.88052,32.09152],[40.97945,32.06804],[41.05112,32.07439],[41.09727,32.00971],[41.15399,31.94508],[41.21405,31.9531],[41.26338,32.03913],[41.33185,32.04436],[41.38481,31.94181],[41.42181,31.90384],[41.43691,31.84784],[41.44798,31.81954],[41.4534,31.79488],[41.45025,31.81537],[41.44398,31.829],[41.43129,31.8809],[41.39683,31.93573],[41.36418,32.00635],[41.30156,32.11213],[41.23138,32.18678],[41.21555,32.28251],[41.1969,32.39139],[41.16746,32.49022],[41.16617,32.57694],[41.19914,32.62712],[41.2122,32.64572],[41.22292,32.71022],[41.20115,32.81599],[41.20249,32.94511],[41.23617,33.06125],[41.22056,33.21163],[41.24154,33.32508],[41.28574,33.4461],[41.30365,33.55635],[41.35668,33.67153],[41.42029,33.78938],[41.48271,33.91774],[41.51551,34.18514],[41.58615,34.28951],[41.63279,34.42541],[41.62329,34.53132],[41.61425,34.62588],[41.53949,34.68899],[41.57211,34.82961],[41.67384,34.91702],[41.79292,35.00724],[41.84646,35.13353],[41.77316,35.20411],[41.70435,35.3155],[41.6345,35.51462],[41.60831,35.66784],[41.57946,35.84756],[41.54142,35.93848],[41.50086,36.06079],[41.4376,36.14047],[41.38979,36.20308],[41.33288,36.28326],[41.30266,36.33105],[41.25702,36.38423],[41.23251,36.51647],[41.21122,36.68299],[41.21902,36.89226],[41.1979,37.01209],[41.13183,37.21232],[41.11229,37.33318],[41.07014,37.45503],[41.03023,37.50234],[41.03169,37.58253],[40.98378,37.71274],[40.99916,37.8219],[40.98658,37.87887],[40.97596,37.9373],[40.9686,38.04569],[40.9457,38.16765],[40.9412,38.28644],[40.91005,38.36979],[40.9116,38.4331],[40.91705,38.51046],[40.94354,38.58622],[40.96753,38.65042],[40.95614,38.72746],[41.01131,38.86161],[41.03728,38.99084],[41.07752,39.1645],[41.05558,39.30401],[41.10372,39.42568],[41.05662,39.53001],[41.01483,39.59859],[41.00475,39.69611],[41.0035,39.71753],[41.0015,39.71766]],"km":1799,"n":181},"bursa-izmir":{"noktalar":[[40.19562,29.06009],[40.19735,29.05057],[40.21324,29.00871],[40.26509,28.94964],[40.25525,28.80904],[40.25708,28.72336],[40.27486,28.5517],[40.20659,28.38142],[40.11288,28.27715],[39.97497,28.16785],[39.87823,28.0976],[39.77055,28.00996],[39.73556,27.98904],[39.69903,27.96664],[39.66711,27.91806],[39.64753,27.88794],[39.65227,27.87526],[39.65986,27.82402],[39.63937,27.7429],[39.63851,27.7116],[39.56994,27.7017],[39.4836,27.65226],[39.3635,27.62798],[39.23338,27.59113],[39.1106,27.70021],[39.00073,27.73993],[38.83991,27.65731],[38.65507,27.65083],[38.49127,27.57775],[38.46259,27.4335],[38.46736,27.32502],[38.44428,27.22558],[38.42626,27.20971],[38.42536,27.18974],[38.42341,27.15982],[38.42059,27.14256],[38.41909,27.13999]],"km":351,"n":37},"bursa-antalya":{"noktalar":[[40.19562,29.06009],[40.19147,29.09794],[40.19864,29.19478],[40.18661,29.2146],[40.17528,29.26488],[40.16046,29.33014],[40.1484,29.36505],[40.09156,29.4918],[40.02631,29.62377],[39.97323,29.65818],[39.94386,29.70953],[39.92579,29.75274],[39.9097,29.81562],[39.91553,29.99721],[39.90685,30.03478],[39.8941,30.06268],[39.82365,30.14462],[39.71151,30.15816],[39.65917,30.15703],[39.57699,30.08602],[39.52465,30.05661],[39.45306,30.01288],[39.40223,30.03091],[39.35057,30.05591],[39.20082,30.12869],[39.04245,30.24465],[38.88087,30.39139],[38.81804,30.44184],[38.76747,30.52834],[38.75798,30.55148],[38.78468,30.47459],[38.77405,30.37067],[38.68437,30.32195],[38.58785,30.24725],[38.49631,30.24059],[38.41231,30.22913],[38.19822,30.19031],[38.0763,30.27634],[37.94707,30.29682],[37.89407,30.40256],[37.80109,30.38779],[37.73111,30.30684],[37.70101,30.31211],[37.67788,30.35145],[37.5969,30.40279],[37.57811,30.43813],[37.52111,30.51775],[37.47215,30.56329],[37.32114,30.49109],[37.19938,30.49815],[37.1622,30.5007],[37.14985,30.51041],[37.1243,30.54109],[37.06095,30.61703],[36.94988,30.63095],[36.92323,30.66795],[36.89973,30.70045],[36.8969,30.71328]],"km":568,"n":58},"antalya-adana":{"noktalar":[[36.8969,30.71328],[36.90693,30.76907],[36.93393,30.96336],[36.91543,31.13426],[36.88991,31.25039],[36.81947,31.34987],[36.77762,31.46957],[36.67184,31.6409],[36.63714,31.75028],[36.58527,31.88958],[36.55606,31.97386],[36.53179,32.04653],[36.45755,32.12361],[36.37278,32.2167],[36.29349,32.28804],[36.22254,32.38767],[36.17589,32.44176],[36.14429,32.45496],[36.12719,32.48654],[36.11387,32.51845],[36.09623,32.54511],[36.10494,32.57369],[36.09806,32.5878],[36.09508,32.61726],[36.09382,32.63806],[36.07442,32.63859],[36.05341,32.67452],[36.03321,32.76171],[36.07448,32.83805],[36.10043,32.9387],[36.09608,33.05024],[36.1349,33.24566],[36.14042,33.31876],[36.15243,33.39339],[36.15467,33.44687],[36.16681,33.5207],[36.19752,33.63007],[36.24764,33.76948],[36.29677,33.8464],[36.36974,33.94969],[36.40561,34.06983],[36.46212,34.1414],[36.50115,34.19156],[36.55093,34.24017],[36.61088,34.31816],[36.68515,34.42185],[36.74182,34.52036],[36.78785,34.6096],[36.81381,34.6565],[36.8749,34.80434],[36.94904,34.98957],[36.99511,35.218],[36.99023,35.33807],[36.99139,35.3308]],"km":530,"n":54},"adana-gaziantep":{"noktalar":[[36.99139,35.3308],[37.00653,35.32275],[37.02263,35.34541],[37.02349,35.46633],[36.99202,35.6227],[36.99892,35.73277],[36.98505,35.80823],[36.99982,35.9392],[37.03712,36.08492],[37.08971,36.15049],[37.12256,36.29201],[37.17713,36.37808],[37.19027,36.43562],[37.18267,36.54304],[37.17499,36.62647],[37.18476,36.71323],[37.1866,36.81434],[37.23903,37.00329],[37.27799,37.17893],[37.21957,37.263],[37.15903,37.28428],[37.09468,37.34177],[37.06665,37.38012],[37.06552,37.38338]],"km":224,"n":24}};
+
+// ── Yardımcı: güzergah bul (her iki yönde) ──────────────
+function saGuzergahBul(s1, s2) {
+  // Doğrudan yön
+  let g = SA_GUZERGAHLAR.find(x => x.s1 === s1 && x.s2 === s2);
+  if (g) return { guzergah: g, ters: false };
+  // Ters yön
+  g = SA_GUZERGAHLAR.find(x => x.s1 === s2 && x.s2 === s1);
+  if (g) return { guzergah: g, ters: true };
+  return null;
+}
+
+// ── State (yukarıda tanımlı) ─────────────────────────────
+let saSeciliGuzergah = null; // {guzergah, ters}
+
+function saInit() {
+  // DOM hazır — input değerlerini ve dropdown'ları ayarla
+  const ti = document.getElementById('sa-tarih-input');
+  const si = document.getElementById('sa-saat-input');
+  if (ti) ti.value = saTarih;
+  if (si) si.value = saSaat;
+
+  // Şehirleri dropdown'lara doldur (alfabetik)
+  const sehirler = Object.entries(SA_SEHIRLER)
+    .sort((a,b) => a[1].ad.localeCompare(b[1].ad, 'tr'));
+
+  // Harita nesnesi (saInit'te oluştur, hesaplamada güncelle)
+  if (!window.saHarita) {
+    window.saHarita = null;
+  }
+
+  const kalSelect = document.getElementById('sa-kalkis-sehir');
+  const varSelect = document.getElementById('sa-varis-sehir');
+  sehirler.forEach(([id, s]) => {
+    kalSelect.innerHTML += `<option value="${id}">${s.ad}</option>`;
+    varSelect.innerHTML += `<option value="${id}">${s.ad}</option>`;
+  });
+}
+
+function saTarihDegis(v) { saTarih = v; }
+function saSaatDegis(v)  { saSaat  = v; }
+function saTrafikSec(dk) {
+  saTrafikDk = dk;
+  document.querySelectorAll('.trafik-btn').forEach(b => {
+    b.classList.toggle('aktif', parseInt(b.dataset.dk) === dk);
+  });
+}
+
+// ── Kalkış şehri seçildi ─────────────────────────────────
+function saKalkisSehirSec(sid) {
+  saKalkisSehir = sid || null;
+  saKalkisNokta = null;
+  saVarisSehir  = null;
+  saVarisNokta  = null;
+  saSeciliGuzergah = null;
+
+  const noktaSelect = document.getElementById('sa-kalkis-nokta');
+  const variKart    = document.getElementById('sa-varis-kart');
+
+  if (!sid) {
+    noktaSelect.style.display = 'none';
+    variKart.style.display    = 'none';
+    document.getElementById('sa-takas-wrap').style.display = 'none';
+    saGizle();
+    return;
+  }
+
+  const s = SA_SEHIRLER[sid];
+  if (s.noktalar.length > 1) {
+    noktaSelect.innerHTML = '<option value="">Terminal seçin...</option>' +
+      s.noktalar.map(n => `<option value="${n.id}">${n.ad}</option>`).join('');
+    noktaSelect.style.display = '';
+    noktaSelect.value = '';
+  } else {
+    // Tek terminal — otomatik seç
+    saKalkisNokta = s.noktalar[0];
+    noktaSelect.style.display = 'none';
+    variKart.style.display = '';
+    document.getElementById('sa-takas-wrap').style.display = '';
+    document.getElementById('sa-varis-sehir').value = '';
+  }
+}
+
+function saKalkisNoktaSec(nid) {
+  if (!nid || !saKalkisSehir) return;
+  saKalkisNokta = SA_SEHIRLER[saKalkisSehir].noktalar.find(n => n.id === nid);
+  document.getElementById('sa-varis-kart').style.display = '';
+  document.getElementById('sa-takas-wrap').style.display = '';
+  document.getElementById('sa-varis-sehir').value = '';
+  saVarisSehir = null;
+  saVarisNokta = null;
+  saGizle();
+}
+
+// ── Varış şehri seçildi ──────────────────────────────────
+function saVarisSehirSec(sid) {
+  saVarisSehir = sid || null;
+  saVarisNokta = null;
+  saSeciliGuzergah = null;
+
+  const noktaSelect = document.getElementById('sa-varis-nokta');
+  saGizle();
+
+  if (!sid || !saKalkisSehir) return;
+  if (sid === saKalkisSehir) {
+    alert('Kalkış ve varış aynı şehir olamaz.');
+    document.getElementById('sa-varis-sehir').value = '';
+    saVarisSehir = null;
+    return;
+  }
+
+  const s = SA_SEHIRLER[sid];
+  if (s.noktalar.length > 1) {
+    noktaSelect.innerHTML = '<option value="">Terminal seçin...</option>' +
+      s.noktalar.map(n => `<option value="${n.id}">${n.ad}</option>`).join('');
+    noktaSelect.style.display = '';
+    noktaSelect.value = '';
+  } else {
+    saVarisNokta = s.noktalar[0];
+    noktaSelect.style.display = 'none';
+    saGuzergahEslestir();
+  }
+}
+
+function saVarisNoktaSec(nid) {
+  if (!nid || !saVarisSehir) return;
+  saVarisNokta = SA_SEHIRLER[saVarisSehir].noktalar.find(n => n.id === nid);
+  saGuzergahEslestir();
+}
+
+// ── Güzergah eşleştir ────────────────────────────────────
+function saAlternatifGoster(altlar, ters) {
+  // Alternatif seçim kartını göster
+  const bilgiEl = document.getElementById('sa-guzergah-bilgi');
+  const kart = document.getElementById('sa-guzergah-kart');
+
+  const secenekler = altlar.map((a, i) => `
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+      border:1.5px solid var(--border);border-radius:var(--radius-sm);
+      margin-bottom:6px;cursor:pointer;transition:all 0.15s;background:var(--bg)"
+      id="alt-label-${i}"
+      onclick="saAlternatifSec(${i}, ${JSON.stringify(altlar).replace(/"/g,'&quot;')}, ${ters})">
+      <input type="radio" name="sa-alt" value="${i}"
+        style="margin-top:3px;accent-color:var(--sun);flex-shrink:0">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${a.label}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${a.aciklama}</div>
+        <div style="font-size:11px;color:var(--sun-dark);margin-top:3px;
+          background:var(--sun-light);display:inline-block;padding:1px 7px;border-radius:4px">
+          ⏱ ${a.sure}
+        </div>
+      </div>
+    </label>`).join('');
+
+  bilgiEl.innerHTML = `
+    <div style="font-size:11px;color:var(--text3);font-weight:700;
+      letter-spacing:0.6px;margin-bottom:8px">HANGİ GÜZERGAHI KULLANIYORSUNUZ?</div>
+    ${secenekler}`;
+
+  kart.style.display = '';
+  document.getElementById('sa-zaman-kart').style.display = 'none';
+  document.getElementById('sa-hesapla-btn').style.display = 'none';
+  document.getElementById('sa-sonuc-wrap').innerHTML = '';
+}
+
+function saAlternatifSec(idx, altlar, ters) {
+  const alt = altlar[idx];
+
+  // Radio butonunu işaretle ve seçili görünümü ver
+  document.querySelectorAll('input[name="sa-alt"]').forEach((r, i) => {
+    r.checked = (i === idx);
+    const lbl = document.getElementById('alt-label-' + i);
+    if (lbl) {
+      lbl.style.background    = i === idx ? 'var(--sun-light)' : 'var(--bg)';
+      lbl.style.borderColor   = i === idx ? 'var(--sun)' : 'var(--border)';
+    }
+  });
+
+  // Seçilen alternatifi saSeciliGuzergah'a set et
+  // SA_GUZERGAHLAR'daki gerçek güzergah yerine alternatif verisini kullan
+  const baseSf = ters ? alt.sb : alt.sf;
+  const baseSb = ters ? alt.sf : alt.sb;
+
+  saSeciliGuzergah = {
+    guzergah: {
+      id: alt.id,
+      sure: alt.sure,
+      yol: alt.label,
+      sf: baseSf,
+      sb: baseSb,
+      wp: [],
+    },
+    ters: false, // zaten yönü yukarıda ayarladık
+  };
+
+  // Mola listesini güncelle
+  const bilgiEl = document.getElementById('sa-guzergah-bilgi');
+  // Seçim kartı kalır, altına güzergah bilgisi ekle
+  const molalar = baseSf;
+  const molaHTML = molalar.length > 0
+    ? '<div style="font-size:10px;color:var(--text3);font-weight:700;' +
+      'letter-spacing:0.6px;margin:10px 0 6px">DURAKLAR / MOLALAR</div>' +
+      '<div class="mola-listesi">' +
+      molalar.map(m => {
+        const tip = m[0].includes('Dinlenme') || m[0].includes('Mola') ? 'mola' : 'durak';
+        return `<div class="mola-item"><div class="mola-dot ${tip}"></div><span>${m[0]}</span></div>`;
+      }).join('') + '</div>'
+    : '<div style="font-size:12px;color:var(--text3);margin-top:8px">Ara durak yok</div>';
+
+  // Sadece seçim kartının altına ekle (içini değiştirme)
+  const existing = bilgiEl.querySelector('.alt-mola-wrap');
+  if (existing) existing.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'alt-mola-wrap';
+  wrap.innerHTML = molaHTML;
+  bilgiEl.appendChild(wrap);
+
+  document.getElementById('sa-zaman-kart').style.display = '';
+  document.getElementById('sa-hesapla-btn').style.display = '';
+  document.getElementById('sa-sonuc-wrap').innerHTML = '';
+}
+
+function saGuzergahEslestir() {
+  if (!saKalkisSehir || !saVarisSehir || !saKalkisNokta || !saVarisNokta) return;
+
+  const bulunan = saGuzergahBul(saKalkisSehir, saVarisSehir);
+  saSeciliGuzergah = bulunan;
+
+  // Alternatif güzergah var mı kontrol et
+  const guzId = bulunan ? bulunan.guzergah.id : null;
+  const altKey1 = saKalkisSehir + '-' + saVarisSehir;
+  const altKey2 = saVarisSehir + '-' + saKalkisSehir;
+  const altlar = SA_ALTERNATIFLER[altKey1] || SA_ALTERNATIFLER[altKey2];
+
+  if (altlar) {
+    saAlternatifGoster(altlar, altKey2 in SA_ALTERNATIFLER);
+    return; // güzergah bilgisini alternatif seçilince göster
+  }
+
+  if (!bulunan) {
+    document.getElementById('sa-guzergah-kart').style.display = '';
+    document.getElementById('sa-guzergah-bilgi').innerHTML =
+      `<div style="font-size:13px;color:var(--text2);padding:6px 0">
+        Bu güzergah için veri bulunamadı. Düz hat hesaplama yapılacak.
+      </div>`;
+    document.getElementById('sa-zaman-kart').style.display = '';
+    document.getElementById('sa-hesapla-btn').style.display = '';
+    return;
+  }
+
+  const g = bulunan.guzergah;
+  const ters = bulunan.ters;
+  const molalar = ters ? g.sb : g.sf;
+
+  // Güzergah bilgisi kartı
+  let molaHTML = '';
+  if (molalar.length > 0) {
+    molaHTML = molalar.map(m => {
+      const tip = m[0].includes('Mola') || m[0].includes('Dinlenme') ? 'mola' : 'durak';
+      return `<div class="mola-item">
+        <div class="mola-dot ${tip}"></div>
+        <span>${m[0]}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Waypoint'ler
+  const wplar = g.wp || [];
+  const wpHTML = wplar.length > 0
+    ? wplar.map(wp => `<div class="mola-item">
+        <div class="mola-dot" style="background:var(--shade);opacity:0.5"></div>
+        <span style="color:var(--text3);font-size:11px">${wp[0]}</span>
+      </div>`).join('')
+    : '';
+
+  document.getElementById('sa-guzergah-bilgi').innerHTML = `
+    <div class="guzergah-info" style="margin-bottom:8px">
+      <span>🛣️ ${g.yol}</span>
+      <span class="guzergah-sure">⏱ ${g.sure}</span>
+    </div>
+    ${molalar.length > 0 ? `<div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:0.6px;margin-bottom:6px">DURAKLAR / MOLALAR</div>` : ''}
+    <div class="mola-listesi">${molaHTML}${wpHTML}</div>
+  `;
+
+  document.getElementById('sa-guzergah-kart').style.display = '';
+  document.getElementById('sa-zaman-kart').style.display = '';
+  document.getElementById('sa-hesapla-btn').style.display = '';
+  document.getElementById('sa-sonuc-wrap').innerHTML = '';
+}
+
+function saGizle() {
+  document.getElementById('sa-guzergah-kart').style.display = 'none';
+  document.getElementById('sa-zaman-kart').style.display    = 'none';
+  document.getElementById('sa-hesapla-btn').style.display   = 'none';
+  document.getElementById('sa-sonuc-wrap').innerHTML = '';
+}
+
+// ── Hesapla ──────────────────────────────────────────────
+function saHesapla() {
+  if (!saKalkisNokta || !saVarisNokta) { alert('Lütfen kalkış ve varış seçin.'); return; }
+
+  const btn = document.getElementById('sa-hesapla-btn');
+  btn.disabled = true; btn.textContent = 'Hesaplanıyor...';
+
+  setTimeout(() => {
+    try {
+      const [Y,M,D] = saTarih.split('-').map(Number);
+      const [H,Mn]  = saSaat.split(':').map(Number);
+
+      // Trafik gecikmesini kalkış saatine ekle
+      const gercekKalkis = new Date(Date.UTC(Y, M-1, D, H-3, Mn + saTrafikDk));
+      const gY = gercekKalkis.getUTCFullYear();
+      const gM = gercekKalkis.getUTCMonth() + 1;
+      const gD = gercekKalkis.getUTCDate();
+      const gH = gercekKalkis.getUTCHours() + 3; // UTC+3
+      const gMn = gercekKalkis.getUTCMinutes();
+
+      // Güzergah noktalarını oluştur
+      const kalkisKoord = [saKalkisNokta.ad, saKalkisNokta.lat, saKalkisNokta.lng];
+      const varisKoord  = [saVarisNokta.ad,  saVarisNokta.lat,  saVarisNokta.lng];
+      let noktalar = [];
+
+      // Önce OSRM gerçek yol geometrisini dene
+      const guzId = saSeciliGuzergah?.guzergah?.id || '';
+      // Güzergah ID'sinden base ID'yi çıkar (örn: istanbul-ankara-ic → istanbul-ankara)
+      const baseId = guzId.replace(/-(ic|sahil|bursa|trakya|afyon|konya|tem|yalova|osmangazi)$/, '');
+      const osrmData = SA_WAYPOINTS[baseId] || SA_WAYPOINTS[guzId];
+
+      if (osrmData && osrmData.noktalar.length > 2) {
+        // OSRM waypoint'leri kullan — kalkış/varış terminali koordinatlarıyla başlat/bitir
+        const osrmNoktalar = osrmData.noktalar;
+        // İlk ve son OSRM noktalarını terminal koordinatlarıyla değiştir
+        noktalar = [
+          kalkisKoord,
+          ...osrmNoktalar.slice(1, -1).map(n => ['', n[0], n[1]]),
+          varisKoord
+        ];
+      } else if (saSeciliGuzergah) {
+        // OSRM yoksa mola noktalarını kullan
+        const g    = saSeciliGuzergah.guzergah;
+        const ters = saSeciliGuzergah.ters;
+        const molalar = ters ? g.sb : g.sf;
+        const wplar   = g.wp || [];
+        const araNoktalar = [...molalar, ...wplar];
+        araNoktalar.sort((a, b) => {
+          const da = haversine(kalkisKoord[1], kalkisKoord[2], a[1], a[2]);
+          const db = haversine(kalkisKoord[1], kalkisKoord[2], b[1], b[2]);
+          return da - db;
+        });
+        if (ters) araNoktalar.reverse();
+        noktalar = [kalkisKoord, ...araNoktalar, varisKoord];
+      } else {
+        noktalar = [kalkisKoord, varisKoord];
+      }
+
+      // Toplam mesafe ve süre
+      let toplamMesafe = 0;
+      for (let i = 0; i < noktalar.length - 1; i++) {
+        toplamMesafe += haversine(noktalar[i][1], noktalar[i][2],
+                                   noktalar[i+1][1], noktalar[i+1][2]);
+      }
+
+      // Tahmini süre (saat) — güzergah verisinden al
+      const sureSaat = saSeciliGuzergah
+        ? parseFloat(saSeciliGuzergah.guzergah.sure.split('-')[0])
+        : toplamMesafe / 80; // ~80 km/s ortalama
+
+      // Segment analizi
+      let sagMesafe=0, solMesafe=0, onMesafe=0, arkaMesafe=0;
+      const segmentler = [];
+
+      for (let i = 0; i < noktalar.length - 1; i++) {
+        const [ad1,lat1,lng1] = noktalar[i];
+        const [ad2,lat2,lng2] = noktalar[i+1];
+        const segMesafe = haversine(lat1,lng1,lat2,lng2);
+
+        // Bu segmentte geçen süre (orantılı)
+        const segSureDk = (segMesafe / toplamMesafe) * sureSaat * 60;
+        const segBasDk  = (() => {
+          let acc = 0;
+          for (let j = 0; j < i; j++) {
+            acc += haversine(noktalar[j][1],noktalar[j][2],
+                             noktalar[j+1][1],noktalar[j+1][2]);
+          }
+          return (acc / toplamMesafe) * sureSaat * 60;
+        })();
+
+        // Bu noktaya kadar geçen mola sürelerini hesapla
+        let molaSureDk = 0;
+        for (let j = 0; j < i; j++) {
+          const noktaAdi = (noktalar[j][0] || '').toLowerCase();
+          if (noktaAdi.includes('dinlenme') || noktaAdi.includes('mola')) {
+            molaSureDk += 35; // ana mola: 35 dk
+          } else if (noktaAdi.includes('terminal') || noktaAdi.includes('otogar') ||
+                     noktaAdi.includes('geçiş') || noktaAdi.includes('gecis')) {
+            molaSureDk += 8; // kısa durak: 8 dk
+          }
+        }
+
+        // Segment orta zamanı (trafik + mola süreleri dahil)
+        const ortaDk = segBasDk + segSureDk / 2 + molaSureDk;
+        const segDate = new Date(Date.UTC(gY, gM-1, gD, gH-3, gMn + ortaDk));
+
+        // Segment orta koordinatı
+        const ortaLat = (lat1+lat2)/2, ortaLng = (lng1+lng2)/2;
+        const sun = sunPos(segDate, ortaLat, ortaLng);
+
+        let segAz = toD(Math.atan2(lng2-lng1, lat2-lat1));
+        if (segAz < 0) segAz += 360;
+
+        let rel = ((sun.azimuth - segAz) % 360 + 360) % 360;
+        if (rel > 180) rel -= 360;
+        const abs = Math.abs(rel);
+
+        let yan;
+        if (sun.altitude < -5)  yan = 'gece';
+        else if (abs < 30)      yan = 'on';
+        else if (abs > 150)     yan = 'arka';
+        else if (rel > 0)       yan = 'sag';
+        else                    yan = 'sol';
+
+        if (yan==='sag')        sagMesafe  += segMesafe;
+        else if (yan==='sol')   solMesafe  += segMesafe;
+        else if (yan==='on')    onMesafe   += segMesafe;
+        else if (yan==='arka')  arkaMesafe += segMesafe;
+
+        segmentler.push({ad1, ad2, yan, sun, km: Math.round(segMesafe*10)/10});
+      }
+
+      const seg = {
+        sag:  Math.round(sagMesafe/toplamMesafe*100),
+        sol:  Math.round(solMesafe/toplamMesafe*100),
+        on:   Math.round(onMesafe/toplamMesafe*100),
+        arka: Math.round(arkaMesafe/toplamMesafe*100),
+        toplamKm: Math.round(toplamMesafe*10)/10
+      };
+
+      const maks = Math.max(seg.sag, seg.sol, seg.on, seg.arka);
+      let yan, yanTR, golgeTR;
+      if (maks===seg.sag)       {yan='sag'; yanTR='Sağ taraf'; golgeTR='Sol taraf';}
+      else if (maks===seg.sol)  {yan='sol'; yanTR='Sol taraf'; golgeTR='Sağ taraf';}
+      else if (maks===seg.on)   {yan='on';  yanTR='Ön cam';   golgeTR='';}
+      else                      {yan='arka'; yanTR='Arka cam'; golgeTR='';}
+
+      const ilkSun = sunPos(new Date(Date.UTC(gY,gM-1,gD,gH-3,gMn)),
+                            noktalar[0][1], noktalar[0][2]);
+      const ilkAz = (() => {
+        let az = toD(Math.atan2(noktalar[1][2]-noktalar[0][2],
+                                 noktalar[1][1]-noktalar[0][1]));
+        if (az<0) az+=360; return Math.round(az);
+      })();
+
+      saSonucGoster({yan, yanTR, golgeTR, seg, segmentler, sun:ilkSun, hatAz:ilkAz, noktalar});
+      saHaritaCiz(segmentler, noktalar, gH, gMn);
+
+    } finally {
+      btn.disabled = false; btn.textContent = 'Güneş Tarafını Hesapla';
+    }
+  }, 80);
+}
+
+function saSonucGoster({ yan, yanTR, golgeTR, seg, segmentler, sun, hatAz, noktalar }) {
+  const isGece  = yan === 'gece';
+  const isSunny = yan==='sag' || yan==='sol';
+  const kardCls = isGece ? 'gece' : isSunny ? '' : 'golge';
+  const emoji   = isGece ? '🌙' : isSunny ? '☀️' : '🔵';
+  const baslik  = isGece ? 'Gece yolculuğu'
+    : isSunny ? `${yanTR} ağırlıklı güneşli`
+    : `${yanTR} — güneş karşıda`;
+  const alt = isGece ? 'Yolculuğun büyük bölümü gece vakti.'
+    : isSunny ? `Serin kalmak için <strong>${golgeTR}</strong> koltuk tercih edin.`
+    : 'Güneş ön/arka camdan giriyor.';
+
+  function bar(oran, renk) {
+    return `<div style="height:100%;width:${oran}%;background:${renk};border-radius:3px;transition:width 0.6s ease"></div>`;
+  }
+
+  const segBarHTML = `
+    <div style="margin-bottom:12px;background:rgba(0,0,0,0.04);border-radius:10px;padding:11px 12px">
+      <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:0.6px;margin-bottom:9px">
+        GÜZERGAH BOYUNCA GÜNEŞ — ${seg.toplamKm} km
+      </div>
+      ${[
+        {etiket:'☀️ Sağ taraf', deger:seg.sag,  renk:'#F5A623'},
+        {etiket:'☀️ Sol taraf', deger:seg.sol,  renk:'#F5A623'},
+        {etiket:'→ Ön cam',    deger:seg.on,   renk:'#AAA89E'},
+        {etiket:'← Arka cam', deger:seg.arka,  renk:'#AAA89E'},
+      ].filter(r=>r.deger>0).map(r=>`
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+          <span style="font-size:11px;color:var(--text2);min-width:78px">${r.etiket}</span>
+          <div style="flex:1;background:rgba(0,0,0,0.08);border-radius:3px;height:12px;overflow:hidden">
+            ${bar(r.deger,r.renk)}
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${r.renk==='#F5A623'?'#B8741A':'var(--text2)'};min-width:30px;text-align:right">${r.deger}%</span>
+        </div>`).join('')}
+    </div>`;
+
+  const segDetayHTML = `
+    <div style="background:rgba(0,0,0,0.04);border-radius:10px;padding:11px 12px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:0.6px;margin-bottom:8px">SEGMENT DETAYI</div>
+      ${(() => {
+        // OSRM ara noktaları mesafeye göre gruplandır, isimli olanları göster
+        // İsmi olan noktalar arası segmentleri mesafe bilgisiyle göster
+        let kmBiriken = 0;
+        let gruplar = [];
+        let mevcutGrup = null;
+
+        segmentler.forEach(s => {
+          const adVar = s.ad1 && s.ad1.trim();
+          if (adVar || !mevcutGrup) {
+            if (mevcutGrup) gruplar.push(mevcutGrup);
+            mevcutGrup = { ad1: s.ad1 || '', ad2: s.ad2 || '', km: s.km, yanlar: [s.yan] };
+          } else {
+            mevcutGrup.km += s.km;
+            mevcutGrup.ad2 = s.ad2 || mevcutGrup.ad2;
+            mevcutGrup.yanlar.push(s.yan);
+          }
+        });
+        if (mevcutGrup) gruplar.push(mevcutGrup);
+
+        return gruplar.map(g => {
+          // Gruptaki baskın yan
+          const sayim = {};
+          g.yanlar.forEach(y => sayim[y] = (sayim[y]||0) + 1);
+          const baskın = Object.entries(sayim).sort((a,b)=>b[1]-a[1])[0][0];
+          const yanEmoji = baskın==='sag'?'☀️ Sağ':baskın==='sol'?'☀️ Sol':baskın==='on'?'→ Ön':baskın==='arka'?'← Arka':'🌙 Gece';
+          const yanRenk  = baskın==='sag'||baskın==='sol' ? '#B8741A' : 'var(--text2)';
+          const ad1 = g.ad1 || 'Kalkış';
+          const ad2 = g.ad2 || 'Varış';
+          const kmStr = g.km > 0 ? ` (${Math.round(g.km)} km)` : '';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05)">
+            <span style="font-size:11px;color:var(--text2)">${ad1} → ${ad2}${kmStr}</span>
+            <span style="font-size:11px;font-weight:700;color:${yanRenk}">${yanEmoji}</span>
+          </div>`;
+        }).join('');
+      })()}
+    </div>`;
+
+  const diyagramSVG = isGece ? '' : busDiagramSVG(yan, sun, hatAz);
+  const kalkisAdi  = saKalkisNokta?.ad || '';
+  const varisAdi   = saVarisNokta?.ad  || '';
+  const sure       = saSeciliGuzergah?.guzergah?.sure || '';
+
+  const yogunluk = sun.altitude < 10 ? 'Az (alçak açı)' :
+    sun.altitude < 25 ? 'Yoğun' : sun.altitude < 50 ? 'Orta' : 'Hafif';
+
+  const detayHTML = isGece ? '' : `
+    <div class="detay-grid">
+      <div class="detay-item"><div class="detay-deger">${azDir(sun.azimuth)}</div><div class="detay-etiket">Güneş yönü</div></div>
+      <div class="detay-item"><div class="detay-deger">${sun.altitude}°</div><div class="detay-etiket">Yükseklik</div></div>
+      <div class="detay-item"><div class="detay-deger">${azDir(hatAz)}</div><div class="detay-etiket">Hat yönü</div></div>
+    </div>
+    <div class="sonuc-not">Yoğunluk: <strong>${yogunluk}</strong> · Güneş ${sun.altitude}° yükseklikte, ${azDir(sun.azimuth)} yönünde. (Kalkış anı)</div>`;
+
+  document.getElementById('sa-sonuc-wrap').innerHTML = `
+    <div class="sonuc-kart ${kardCls}">
+      <div class="sonuc-badge-row">
+        <span class="sonuc-hat-badge" style="background:#3D84C8">
+          ${SA_SEHIRLER[saKalkisSehir]?.ad} → ${SA_SEHIRLER[saVarisSehir]?.ad}
+        </span>
+        ${sure ? `<span class="sonuc-rota">${sure}</span>` : ''}
+        ${saTrafikDk > 0 ? `<span style="font-size:11px;background:#FEF3E2;color:#B8741A;padding:2px 8px;border-radius:5px;font-weight:600">🚦 +${saTrafikDk} dk gecikme</span>` : ''}
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">
+        ${kalkisAdi} → ${varisAdi}
+      </div>
+      <div class="sonuc-baslik">${emoji} ${baslik}</div>
+      <div class="sonuc-alt">${alt}</div>
+      ${diyagramSVG ? `<div class="diyagram-wrap">${diyagramSVG}</div>` : ''}
+      ${detayHTML}
+      ${segBarHTML}
+      ${segDetayHTML}
+    </div>`;
+
+  document.getElementById('sa-sonuc-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function saHaritaCiz(segmentler, noktalar, gH, gMn) {
+  const kalkisAd = SA_SEHIRLER[saKalkisSehir]?.ad || '';
+  const varisAd  = SA_SEHIRLER[saVarisSehir]?.ad  || '';
+  const baslikEl = document.getElementById('sa-harita-baslik');
+  if (baslikEl) baslikEl.textContent = kalkisAd + ' → ' + varisAd;
+
+  saZamanCizelgesi(segmentler, noktalar, gH, gMn);
+  document.getElementById('sa-harita-kart').style.display = '';
+  _cizHarita(segmentler, noktalar);
+}
+
+function saZamanCizelgesi(segmentler, noktalar, gH, gMn) {
+  const renkler = { sag:'#F5A623', sol:'#3D84C8', on:'#F5D623', arka:'#4CAF50', gece:'#CCCCCC' };
+  const barEl   = document.getElementById('sa-zaman-bar');
+  if (!barEl) return;
+
+  const toplam = segmentler.reduce((s,x) => s+x.km, 0);
+  barEl.innerHTML = segmentler.map(s => {
+    const pct = (s.km / toplam * 100).toFixed(1);
+    return `<div style="width:${pct}%;background:${renkler[s.yan]||'#ccc'};min-width:1px" title="${s.yan}"></div>`;
+  }).join('');
+
+  // Zaman etiketleri
+  const ilkSure = `${String(gH).padStart(2,'0')}:${String(gMn).padStart(2,'0')}`;
+  const sureSaat = saSeciliGuzergah?.guzergah?.sure?.split('-')[0] || '5';
+  const bitis = new Date(Date.UTC(2000,0,1, gH-3, gMn + parseFloat(sureSaat)*60));
+  const bitisSaat = `${String(bitis.getUTCHours()+3).padStart(2,'0')}:${String(bitis.getUTCMinutes()).padStart(2,'0')}`;
+
+  const bsEl = document.getElementById('sa-zaman-baslangic');
+  const beEl = document.getElementById('sa-zaman-bitis');
+  const kmEl = document.getElementById('sa-zaman-km');
+  if (bsEl) bsEl.textContent = ilkSure;
+  if (beEl) beEl.textContent = bitisSaat;
+  if (kmEl) kmEl.textContent = Math.round(toplam) + ' km';
+
+  // Legend — kaç % sağ, sol, ön vb.
+  const sayimlar = {};
+  segmentler.forEach(s => { sayimlar[s.yan] = (sayimlar[s.yan]||0) + s.km; });
+  const legendEl = document.getElementById('sa-zaman-legend');
+  if (legendEl) {
+    const isimler = { sag:'Sağ', sol:'Sol', on:'Ön', arka:'Arka', gece:'Gece' };
+    legendEl.innerHTML = Object.entries(sayimlar)
+      .filter(([,km]) => km > 0)
+      .sort((a,b) => b[1]-a[1])
+      .map(([yan, km]) => {
+        const pct = Math.round(km/toplam*100);
+        return `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${renkler[yan]};margin-right:4px;vertical-align:middle"></span>${isimler[yan]||yan} %${pct}</span>`;
+      }).join('');
+  }
+}
+
+function _cizHarita(segmentler, noktalar) {
+  const haritaEl = document.getElementById('sa-harita');
+  if (!haritaEl) return;
+
+  if (window.saHarita) {
+    try { window.saHarita.remove(); } catch(e) {}
+    window.saHarita = null;
+  }
+  haritaEl.innerHTML = '';
+
+  setTimeout(() => {
+    try {
+      const harita = L.map('sa-harita', { zoomControl:true, attributionControl:true });
+      window.saHarita = harita;
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
+        maxZoom: 18
+      }).addTo(harita);
+
+      const renkler = { sag:'#F5A623', sol:'#3D84C8', on:'#F5D623', arka:'#4CAF50', gece:'#CCCCCC' };
+      const tumKoordlar = noktalar.map(n => [n[1], n[2]]);
+
+      // Ardışık aynı renkli segmentleri grupla — daha az polyline, daha iyi performans
+      let gruplar = [];
+      let mevcutGrup = null;
+      for (let i = 0; i < segmentler.length; i++) {
+        const yan = segmentler[i].yan;
+        const renk = renkler[yan] || '#999';
+        const n1 = noktalar[i], n2 = noktalar[i+1];
+        if (!n1 || !n2) continue;
+        if (mevcutGrup && mevcutGrup.renk === renk) {
+          mevcutGrup.coords.push([n2[1], n2[2]]);
+        } else {
+          if (mevcutGrup) gruplar.push(mevcutGrup);
+          mevcutGrup = { renk, coords: [[n1[1],n1[2]], [n2[1],n2[2]]] };
+        }
+      }
+      if (mevcutGrup) gruplar.push(mevcutGrup);
+
+      gruplar.forEach(g => {
+        L.polyline(g.coords, {
+          color: g.renk, weight: 5, opacity: 0.88, lineJoin: 'round', lineCap: 'round'
+        }).addTo(harita);
+      });
+
+      const mkIcon = (renk, r) => L.divIcon({
+        html: `<div style="width:${r}px;height:${r}px;border-radius:50%;background:${renk};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.35)"></div>`,
+        className:'', iconSize:[r,r], iconAnchor:[r/2,r/2]
+      });
+
+      const ilk = noktalar[0], son = noktalar[noktalar.length-1];
+      L.marker([ilk[1],ilk[2]], {icon:mkIcon('#2E8B57',14)})
+        .bindTooltip(ilk[0]||'Kalkış').addTo(harita);
+      L.marker([son[1],son[2]], {icon:mkIcon('#E53935',14)})
+        .bindTooltip(son[0]||'Varış').addTo(harita);
+
+      noktalar.slice(1,-1).forEach(n => {
+        if (!n[0]) return;
+        L.marker([n[1],n[2]], {icon:mkIcon('#F5A623',9)})
+          .bindTooltip(n[0]).addTo(harita);
+      });
+
+      if (tumKoordlar.length > 1) {
+        harita.fitBounds(tumKoordlar, {padding:[20,20]});
+      }
+
+      // Legend
+      const leg = L.control({position:'bottomleft'});
+      leg.onAdd = () => {
+        const d = L.DomUtil.create('div');
+        d.style.cssText = 'background:rgba(255,255,255,0.92);padding:6px 10px;border-radius:8px;font-size:11px;line-height:1.9;box-shadow:0 1px 5px rgba(0,0,0,0.2)';
+        d.innerHTML =
+          '<b style="font-size:10px;color:#888">GÜNEŞ KONUMU</b><br>' +
+          [['#3D84C8','Güneş solda'],['#F5A623','Güneş sağda'],['#F5D623','Güneş önde'],['#4CAF50','Güneş arkada'],['#CCCCCC','Ufkun altında']]
+          .map(([c,l]) => `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:5px;vertical-align:middle"></span>${l}`)
+          .join('<br>');
+        return d;
+      };
+      leg.addTo(harita);
+
+    } catch(err) {
+      console.error('Harita hatası:', err);
+    }
+  }, 200);
+}
+
+function saSonucGoster({ yan, yanTR, golgeTR, seg, segmentler, sun, hatAz, noktalar }) {
+  const isGece  = yan === 'gece';
+  const isSunny = yan==='sag' || yan==='sol';
+  const kardCls = isGece ? 'gece' : isSunny ? '' : 'golge';
+  const emoji   = isGece ? '🌙' : isSunny ? '☀️' : '🔵';
+  const baslik  = isGece ? 'Gece yolculuğu'
+    : isSunny ? `${yanTR} ağırlıklı güneşli`
+    : `${yanTR} — güneş karşıda`;
+  const alt = isGece ? 'Yolculuğun büyük bölümü gece vakti.'
+    : isSunny ? `Serin kalmak için <strong>${golgeTR}</strong> koltuk tercih edin.`
+    : 'Güneş ön/arka camdan giriyor.';
+
+  function bar(oran, renk) {
+    return `<div style="height:100%;width:${oran}%;background:${renk};border-radius:3px;transition:width 0.6s ease"></div>`;
+  }
+
+  const segBarHTML = `
+    <div style="margin-bottom:12px;background:rgba(0,0,0,0.04);border-radius:10px;padding:11px 12px">
+      <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:0.6px;margin-bottom:9px">
+        GÜZERGAH BOYUNCA GÜNEŞ — ${seg.toplamKm} km
+      </div>
+      ${[
+        {etiket:'☀️ Sağ taraf', deger:seg.sag,  renk:'#F5A623'},
+        {etiket:'☀️ Sol taraf', deger:seg.sol,  renk:'#F5A623'},
+        {etiket:'→ Ön cam',    deger:seg.on,   renk:'#AAA89E'},
+        {etiket:'← Arka cam', deger:seg.arka,  renk:'#AAA89E'},
+      ].filter(r=>r.deger>0).map(r=>`
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+          <span style="font-size:11px;color:var(--text2);min-width:78px">${r.etiket}</span>
+          <div style="flex:1;background:rgba(0,0,0,0.08);border-radius:3px;height:12px;overflow:hidden">
+            ${bar(r.deger,r.renk)}
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${r.renk==='#F5A623'?'#B8741A':'var(--text2)'};min-width:30px;text-align:right">${r.deger}%</span>
+        </div>`).join('')}
+    </div>`;
+
+  const segDetayHTML = `
+    <div style="background:rgba(0,0,0,0.04);border-radius:10px;padding:11px 12px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:0.6px;margin-bottom:8px">SEGMENT DETAYI</div>
+      ${(() => {
+        // OSRM ara noktaları mesafeye göre gruplandır, isimli olanları göster
+        // İsmi olan noktalar arası segmentleri mesafe bilgisiyle göster
+        let kmBiriken = 0;
+        let gruplar = [];
+        let mevcutGrup = null;
+
+        segmentler.forEach(s => {
+          const adVar = s.ad1 && s.ad1.trim();
+          if (adVar || !mevcutGrup) {
+            if (mevcutGrup) gruplar.push(mevcutGrup);
+            mevcutGrup = { ad1: s.ad1 || '', ad2: s.ad2 || '', km: s.km, yanlar: [s.yan] };
+          } else {
+            mevcutGrup.km += s.km;
+            mevcutGrup.ad2 = s.ad2 || mevcutGrup.ad2;
+            mevcutGrup.yanlar.push(s.yan);
+          }
+        });
+        if (mevcutGrup) gruplar.push(mevcutGrup);
+
+        return gruplar.map(g => {
+          // Gruptaki baskın yan
+          const sayim = {};
+          g.yanlar.forEach(y => sayim[y] = (sayim[y]||0) + 1);
+          const baskın = Object.entries(sayim).sort((a,b)=>b[1]-a[1])[0][0];
+          const yanEmoji = baskın==='sag'?'☀️ Sağ':baskın==='sol'?'☀️ Sol':baskın==='on'?'→ Ön':baskın==='arka'?'← Arka':'🌙 Gece';
+          const yanRenk  = baskın==='sag'||baskın==='sol' ? '#B8741A' : 'var(--text2)';
+          const ad1 = g.ad1 || 'Kalkış';
+          const ad2 = g.ad2 || 'Varış';
+          const kmStr = g.km > 0 ? ` (${Math.round(g.km)} km)` : '';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05)">
+            <span style="font-size:11px;color:var(--text2)">${ad1} → ${ad2}${kmStr}</span>
+            <span style="font-size:11px;font-weight:700;color:${yanRenk}">${yanEmoji}</span>
+          </div>`;
+        }).join('');
+      })()}
+    </div>`;
+
+  const diyagramSVG = isGece ? '' : busDiagramSVG(yan, sun, hatAz);
+  const kalkisAdi  = saKalkisNokta?.ad || '';
+  const varisAdi   = saVarisNokta?.ad  || '';
+  const sure       = saSeciliGuzergah?.guzergah?.sure || '';
+
+  const yogunluk = sun.altitude < 10 ? 'Az (alçak açı)' :
+    sun.altitude < 25 ? 'Yoğun' : sun.altitude < 50 ? 'Orta' : 'Hafif';
+
+  const detayHTML = isGece ? '' : `
+    <div class="detay-grid">
+      <div class="detay-item"><div class="detay-deger">${azDir(sun.azimuth)}</div><div class="detay-etiket">Güneş yönü</div></div>
+      <div class="detay-item"><div class="detay-deger">${sun.altitude}°</div><div class="detay-etiket">Yükseklik</div></div>
+      <div class="detay-item"><div class="detay-deger">${azDir(hatAz)}</div><div class="detay-etiket">Hat yönü</div></div>
+    </div>
+    <div class="sonuc-not">Yoğunluk: <strong>${yogunluk}</strong> · Güneş ${sun.altitude}° yükseklikte, ${azDir(sun.azimuth)} yönünde. (Kalkış anı)</div>`;
+
+  document.getElementById('sa-sonuc-wrap').innerHTML = `
+    <div class="sonuc-kart ${kardCls}">
+      <div class="sonuc-badge-row">
+        <span class="sonuc-hat-badge" style="background:#3D84C8">
+          ${SA_SEHIRLER[saKalkisSehir]?.ad} → ${SA_SEHIRLER[saVarisSehir]?.ad}
+        </span>
+        ${sure ? `<span class="sonuc-rota">${sure}</span>` : ''}
+        ${saTrafikDk > 0 ? `<span style="font-size:11px;background:#FEF3E2;color:#B8741A;padding:2px 8px;border-radius:5px;font-weight:600">🚦 +${saTrafikDk} dk gecikme</span>` : ''}
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">
+        ${kalkisAdi} → ${varisAdi}
+      </div>
+      <div class="sonuc-baslik">${emoji} ${baslik}</div>
+      <div class="sonuc-alt">${alt}</div>
+      ${diyagramSVG ? `<div class="diyagram-wrap">${diyagramSVG}</div>` : ''}
+      ${detayHTML}
+      ${segBarHTML}
+      ${segDetayHTML}
+    </div>`;
+
+  document.getElementById('sa-sonuc-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function saHaritaCiz(segmentler, noktalar) {
+  // Zaman çizelgesini hemen çiz (Leaflet gerektirmez)
+  saZamanCizelgesiCiz(segmentler, noktalar);
+
+  // Harita kartını göster
+  document.getElementById('sa-harita-kart').style.display = '';
+  document.getElementById('sa-harita-baslik').textContent =
+    (SA_SEHIRLER[saKalkisSehir]?.ad || '') + ' → ' + (SA_SEHIRLER[saVarisSehir]?.ad || '');
+
+  // Leaflet yüklü değilse yükle
+  if (typeof L === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    s.onload = () => _cizLeaflet(segmentler, noktalar);
+    document.head.appendChild(s);
+  } else {
+    _cizLeaflet(segmentler, noktalar);
+  }
+}
+
+function saZamanCizelgesiCiz(segmentler, noktalar) {
+  const renkler = { sag:'#F5A623', sol:'#F5A623', on:'#F5D623', arka:'#4CAF50', gece:'#BDBDBD' };
+  const etiketler = { sag:'Sağ', sol:'Sol', on:'Ön', arka:'Arka', gece:'Gece' };
+
+  // Toplam mesafe
+  let toplamKm = 0;
+  segmentler.forEach(s => toplamKm += (s.km || 0));
+  if (toplamKm === 0) return;
+
+  // Bar
+  const barEl = document.getElementById('sa-zaman-bar');
+  barEl.innerHTML = segmentler.map(s => {
+    const pct = ((s.km || 0) / toplamKm * 100).toFixed(2);
+    const renk = renkler[s.yan] || '#999';
+    return `<div style="width:${pct}%;background:${renk};min-width:2px" title="${etiketler[s.yan]||s.yan}"></div>`;
+  }).join('');
+
+  // Başlangıç / bitiş zamanı
+  const [Y,M,D] = saTarih.split('-').map(Number);
+  const [H,Mn]  = saSaat.split(':').map(Number);
+  const kalkisZaman = new Date(Y, M-1, D, H, Mn + saTrafikDk);
+  const sure = saSeciliGuzergah?.guzergah?.sure || '';
+  const sureSaat = sure ? parseFloat(sure.split('-')[0]) : toplamKm / 80;
+  const varisZaman = new Date(kalkisZaman.getTime() + sureSaat * 3600000);
+
+  const fmt = d => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('sa-zaman-baslangic').textContent = fmt(kalkisZaman);
+  document.getElementById('sa-zaman-bitis').textContent     = fmt(varisZaman);
+
+  // Legend — yüzde hesapla
+  const sayim = {};
+  segmentler.forEach(s => { sayim[s.yan] = (sayim[s.yan]||0) + (s.km||0); });
+  const legendEl = document.getElementById('sa-zaman-legend');
+  if (legendEl) {
+    legendEl.innerHTML = Object.entries(sayim)
+      .sort((a,b) => b[1]-a[1])
+      .map(([yan, km]) => {
+        const pct = Math.round(km/toplamKm*100);
+        const renk = renkler[yan] || '#999';
+        return `<span style="display:flex;align-items:center;gap:4px">
+          <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${renk}"></span>
+          ${etiketler[yan]||yan} %${pct}
+        </span>`;
+      }).join('');
+  }
+}
+
+function _cizLeaflet(segmentler, noktalar) {
+  const el = document.getElementById('sa-harita');
+  if (!el) return;
+
+  // Eski haritayı temizle
+  if (window.saHarita) { window.saHarita.remove(); window.saHarita = null; }
+  el.innerHTML = '';
+
+  const renkler = { sag:'#F5A623', sol:'#F5A623', on:'#F5D623', arka:'#4CAF50', gece:'#9E9E9E' };
+
+  // Kısa timeout — DOM'un render'ı tamamlaması için
+  setTimeout(() => {
+    const harita = L.map(el, { zoomControl:true });
+    window.saHarita = harita;
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution:'© OpenStreetMap © CARTO', maxZoom:18
+    }).addTo(harita);
+
+    const bounds = [];
+
+    for (let i = 0; i < segmentler.length; i++) {
+      const n1 = noktalar[i], n2 = noktalar[i+1];
+      if (!n1 || !n2) continue;
+      const c1 = [n1[1], n1[2]], c2 = [n2[1], n2[2]];
+      bounds.push(c1);
+      if (i === segmentler.length-1) bounds.push(c2);
+      L.polyline([c1,c2], { color: renkler[segmentler[i].yan]||'#999', weight:5, opacity:0.9 }).addTo(harita);
+    }
+
+    // Nokta ikonu
+    const ikon = (renk, r) => L.divIcon({
+      html:`<div style="width:${r}px;height:${r}px;border-radius:50%;background:${renk};border:2.5px solid white;box-shadow:0 1px 5px rgba(0,0,0,0.35)"></div>`,
+      className:'', iconSize:[r,r], iconAnchor:[r/2,r/2]
+    });
+
+    // Kalkış & varış
+    const ilk = noktalar[0], son = noktalar[noktalar.length-1];
+    L.marker([ilk[1],ilk[2]], {icon:ikon('#2E8B57',14)}).bindTooltip(ilk[0]||'Kalkış').addTo(harita);
+    L.marker([son[1],son[2]], {icon:ikon('#E53935',14)}).bindTooltip(son[0]||'Varış').addTo(harita);
+
+    // Molalar
+    noktalar.slice(1,-1).forEach(n => {
+      if (!n[0]) return;
+      L.marker([n[1],n[2]], {icon:ikon('#F5A623',10)}).bindTooltip(n[0]).addTo(harita);
+    });
+
+    // Fit
+    if (bounds.length > 1) harita.fitBounds(bounds, {padding:[20,20]});
+
+    // invalidateSize — boyut sorunlarını çözer
+    setTimeout(() => harita.invalidateSize(), 200);
+
+  }, 200);
+}
+
+// Şehirlerarası dropdown'ları doldur — SA_SEHIRLER tanımlandıktan sonra
+saInit();
 </script>
 </body>
 </html>
